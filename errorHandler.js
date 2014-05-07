@@ -196,6 +196,19 @@
     }
 
     /**
+     * Push error handler message to the error object.
+     * @method pushErrorHandlerMessage
+     * @param {object} error object
+     * @param {string} message to append to the error handler messages
+     */
+    function pushErrorHandlerMessage(errorObj, message) {
+        if (!errorObj.errorHandlerMessages) {
+            errorObj.errorHandlerMessages = [];
+        }
+        errorObj.errorHandlerMessages.push(message);
+    }
+
+    /**
      * Validate the guard so we don't have any invalid states. This is a conservative approach that 
      * may skip retrieving a stack trace, taking a screenshot, or sending the error to the server
      * if the appropriate urls haven't been provided for stacktrace.js, html2canvas.js, or error 
@@ -204,13 +217,41 @@
      * @method validateGuard
      * @param {object} guard object to validate
      * @param {bool} Whether or not this error is reported via errorHandler.report()
+     * @param {object} error object
      */
-    function validateGuard(guardObj, isReport) {
-        return {
-            retrieveStacktrace: !!(guardObj.retrieveStacktrace && stacktraceUrl && isReport),
-            takeScreenshot: !!(guardObj.takeScreenshot && html2canvasUrl && guardObj.submitError && submitErrorUrl),
-            submitError: !!(guardObj.submitError && submitErrorUrl)
+    function validateGuard(guardObj, isReport, errorObj) {
+        var validGuardObj = {
+            retrieveStackTrace: guardObj.retrieveStacktrace,
+            takeScreenshot: guardObj.takeScreenshot,
+            submitError: guardObj.submitError
         };
+        //validate retrieveStackTrace
+        if (guardObj.retrieveStacktrace && !stacktraceUrl) {
+            validGuardObj.retrieveStacktrace = false;
+            pushErrorHandlerMessage(errorObj, "Could not retrieve stack trace because you did not provide a url to retrieve stacktrace.js");
+        } else if (guardObj.retrieveStacktrace && !isReport) {
+            validGuardObj.retrieveStacktrace = false;
+            pushErrorHandlerMessage(errorObj, "Could not retrieve stack trace because this error is handled with window.onerror which can't produce a good stack trace.");
+        } else if (guardObj.retrieveStacktrace && !window.printStackTrace) {
+            validGuardObj.retrieveStacktrace = false;
+            pushErrorHandlerMessage(errorObj, "Could not retrieve stack trace because stacktrace.js was not loaded before we hit the error.");
+        }
+
+        //validate submitError
+        if (guardObj.submitError && !submitErrorUrl) {
+            validGuardObj.submitError = false;
+            pushErrorHandlerMessage(errorObj, "Could not submit the error to a server because you did not provide a url to submit the error to.");
+        }
+
+        //validate takeScreenshot
+        if (guardObj.takeScreenshot && !html2canvasUrl) {
+            validGuardObj.takeScreenshot = false;
+            pushErrorHandlerMessage(errorObj, "Could not take a screenshot because you did not provide a url to retireve html2canvas.js");
+        } else if (guardObj.takeScreenshot && !validGuardObj.submitError) {
+            validGuardObj.takeScreenshot = false;
+            pushErrorHandlerMessage(errorObj, "We do not take a screenshot if you're not going to submit the error to a server.");
+        }
+        return validGuardObj;
     }
 
     /**
@@ -246,6 +287,7 @@
             };
         }
         return {
+            //we don't need to retrieve the stack trace if we already have one
             retrieveStacktrace: !!(errorObj.stack),
             takeScreenshot: true,
             submitError: true
@@ -322,7 +364,7 @@
         try {
             var errObj = constructErrorObject(errorMsg, url, lineNumber, columnNumber, errorObj),
                 guardObj = guard(errObj, encounteredErrors, isReport),
-                validatedGuardObj = validateGuard(guardObj, isReport);
+                validatedGuardObj = validateGuard(guardObj, isReport, errObj);
             encounteredErrors.push({ timestamp: Date.now(), error: errObj });
             handleErrorInternal(errObj, validatedGuardObj);
         } catch (e) {
