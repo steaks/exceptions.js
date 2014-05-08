@@ -1,9 +1,8 @@
 /*global window, console, document */
-/*jslint todo: true */
 (function () {
     "use strict";
-    if (window.errorHandler) {
-        console.log("You have loaded errorHandler.js more than once!  Only load it once for performance gains..");
+    if (window.simpleJsErrorHandler) {
+        console.log("You have loaded simpleJsErrorHandler.js more than once!  Only load it once for performance gains..");
     }
     //internal variables
 
@@ -18,7 +17,7 @@
         //url to load stacktrace.js
         stacktraceUrl,
         //whether or not the error handler will execute at window.onerror.  You can configure
-        //the error handler to only handle errors when you explicitly call window.errorHandler.report()
+        //the error handler to only handle errors when you explicitly call window.simpleJsErrorHandler.report()
         setupWindowOnError,
         //whether or not the error handler tool is setup.
         isSetup,
@@ -213,10 +212,10 @@
      * may skip retrieving a stack trace, taking a screenshot, or sending the error to the server
      * if the appropriate urls haven't been provided for stacktrace.js, html2canvas.js, or error 
      * submissions.  Also, we may skip tasks depending on whether or not the error is being reported
-     * via errorHandler.report() or being handled in window.onerror.
+     * via simpleJsErrorHandler.report() or being handled in window.onerror.
      * @method validateGuard
      * @param {object} guard object to validate
-     * @param {bool} Whether or not this error is reported via errorHandler.report()
+     * @param {bool} Whether or not this error is reported via simpleJsErrorHandler.report()
      * @param {object} error object
      */
     function validateGuard(guardObj, isReport, errorObj) {
@@ -226,15 +225,21 @@
             submitError: guardObj.submitError
         };
         //validate retrieveStackTrace
-        if (guardObj.retrieveStacktrace && !stacktraceUrl) {
+        if (guardObj.retrieveStacktrace && !(window.printStackTrace || stacktraceUrl)) {
             validGuardObj.retrieveStacktrace = false;
-            pushErrorHandlerMessage(errorObj, "Could not retrieve stack trace because you did not provide a url to retrieve stacktrace.js");
+            pushErrorHandlerMessage(errorObj, "Could not retrieve stack trace because you did not provide a way to access stacktrace.js.  Consider providing a stackTraceUrl when configuring the error handler.");
         } else if (guardObj.retrieveStacktrace && !isReport) {
             validGuardObj.retrieveStacktrace = false;
             pushErrorHandlerMessage(errorObj, "Could not retrieve stack trace because this error is handled with window.onerror which can't produce a good stack trace.");
         } else if (guardObj.retrieveStacktrace && !window.printStackTrace) {
             validGuardObj.retrieveStacktrace = false;
-            pushErrorHandlerMessage(errorObj, "Could not retrieve stack trace because stacktrace.js was not loaded before we hit the error.");
+            pushErrorHandlerMessage(errorObj, "Could not retrieve stack trace because stacktrace.js was not loaded before we hit the error.  Consider preloading stackTrace.js if you want to avoid this corner case.");
+        }
+
+        //validate takeScreenshot
+        if (guardObj.takeScreenshot && !(window.html2canvas || html2canvasUrl)) {
+            validGuardObj.takeScreenshot = false;
+            pushErrorHandlerMessage(errorObj, "Could not take a screenshot because you did not provide a way to access html2canvas.js.  Consider providing a html2canvasUrl when configuring the error handler.");
         }
 
         //validate submitError
@@ -243,14 +248,6 @@
             pushErrorHandlerMessage(errorObj, "Could not submit the error to a server because you did not provide a url to submit the error to.");
         }
 
-        //validate takeScreenshot
-        if (guardObj.takeScreenshot && !html2canvasUrl) {
-            validGuardObj.takeScreenshot = false;
-            pushErrorHandlerMessage(errorObj, "Could not take a screenshot because you did not provide a url to retireve html2canvas.js");
-        } else if (guardObj.takeScreenshot && !validGuardObj.submitError) {
-            validGuardObj.takeScreenshot = false;
-            pushErrorHandlerMessage(errorObj, "We do not take a screenshot if you're not going to submit the error to a server.");
-        }
         return validGuardObj;
     }
 
@@ -305,11 +302,6 @@
         try {
             if (guardObj.retrieveStacktrace && !window.printStackTrace) {
                 //retrieve the stacktrace.js script before handling the error.
-
-                //TODO Fix bug where we don't get the stack trace we want when
-                //the stacktrace.js script was not preloaded.  We don't get the
-                //stack trace we want because the trace starts at the callback
-                //that is executed when after the script loads.
                 scriptTag(stacktraceUrl, function () {
                     handleErrorInternal(errorObj, guardObj);
                 });
@@ -358,7 +350,7 @@
      * @param {int} line number the error was hit on
      * @param {int} column number the error was hit on
      * @param {object} objec that contains information about the error
-     * @param {bool} whether or not the error was created via errorHandler.report()
+     * @param {bool} whether or not the error was created via simpleJsErrorHandler.report()
      */
     function handleError(errorMsg, url, lineNumber, columnNumber, errorObj, isReport) {
         try {
@@ -399,7 +391,7 @@
      */
     function report(errorObj) {
         if (!isSetup) {
-            throw new Error("Error handling not set up!  Please use window.errorHandler.configure to configure your error handler before you report errors.");
+            throw new Error("Error handling not set up!  Please use window.simpleJsErrorHandler.configure to configure your error handler before you report errors.");
         }
         //First argument is errorMsg.  (JSLint doesn't like it when you have a comment
         //between the method call opening parenthesis and the first argument :(
@@ -410,38 +402,53 @@
      * Configure the error handler.  This includes setting up the internal properties (e.g. guard, submitErrorUrl,
      * html2canvasUrl, etc.) and setting up window.onerror.
      * @param {object} Configuration object for the error handler.  The configuration object is expected to have 
-     *           the following properties:
-     *           submitErrorUrl: Optionally a url where you want to submit the error to a server.  If you provide a submitErrorUrl
-     *                           and your guard specifies that the error should be submitted, then the error handler will submit
-     *                           a post request which can contain query string parameters message, url, lineNumber, 
-     *                          columnNumber, stack, screenshot + other custom properties you add to an error object when using
-     *                          errorHandler.report()
-     *        submitErrorRequestHeaders: Extra request headers to send along with your error submissions
-     *        html2canvasUrl: Optionally a url to retrieve the html2canvas.js script if you want to take screenshots
-     *        stacktraceurl: Optionally a url to retrieve the stacktrace.js script if you want to gather stack traces
-     *        setupWindowOnError: Whether or not you want to setup window on error.  Alternatively, you can just manuall
-     *                              call errorHandler.report
-     *        guard: Function which that takes in the current error object, an array of previously encountered errors, and whether or 
-     *                 not the error was generated by calling errorHandler.report().  Given this information, the guard function returns
-     *                 an object which specifies whether or not we should get a stack trace using stacktrace.js, take a screenshot using
-     *                 html2canvas.js, and/or submit an error to the server.  The object returned should have the following structure:
-     *                 { retrieveStacktrace: false, takeScreenshot: false, submitError: false }.  Note: taking a screenshot can be particuraly
-     *                 computationally intensive.  If you do not specify a guard function, we'll use a default will try to retieve a stacktrace, 
-     *                 take a screenshot and submit the error unless we've encountered more than 5 errors in the last second or if we've 
-     *                 encountered more than 20 errors total.  We'll try to do none of the mentioned actions if any either of the two 
-     *                 conditions is hit.
+     *        the following properties:
+     *            
+     *        submitErrorUrl:                 Optionally a url where you want to submit the error to a server.  
+     *                                        If you provide a submitErrorUrl and your guard specifies that the 
+     *                                        error should be submitted, then the error handler will submit a post 
+     *                                        request which can contain query string parameters message, url, 
+     *                                        lineNumber, columnNumber, stack, screenshot + other custom properties 
+     *                                        you add to an error object when using simpleJsErrorHandler.report().
+     *            
+     *        submitErrorRequestHeaders:     Extra request headers to send along with your error submissions.  These
+     *                                        headers are sometimes required to prevent cross site scripting attacks.  For
+                                            example, django requires you provide a X-CSRFToken.  (An example for django is
+                                            is shown below.)
+     *        
+     *        html2canvasUrl:                 Url to retrieve the html2canvas.js script if you want to take screenshots.
+     *                                        We load the html2canvas library before the first time you want to take a 
+     *                                        screenshot of the page when reporting an error.  Note, you can load
+     *                                        the html2canvas script however any other way if you want as long as the
+     *                                        window.html2canvas object exists.
+     *        
+     *        stacktraceUrl:                 Url to retrieve the stacktrace.js script if you want to retrieve stack traces
+     *                                        when reporting errors.  We load the stacktrace library before the first time 
+     *                                        you want to retrieve the stack trace when reporting an error.  Unfortunately,
+     *                                        there's a corner case for the first error reported.  We are not able to retrieve
+     *                                        a useful stacktrace for the first error hit that should retrieve a stack trace
+     *                                        because we would have to execute the code the retrieves the stack trace in a callback
+     *                                        which is called after the stacktrace.js script has loaded.  Retrieving a stack trace
+     *                                        that begins at the callback deeply embedded in the error handling code would produce 
+     *                                        a meaningless stack trace.  Alternatively, you can preload the stacktrace library
+     *                                        if you want to avoid this corner case.  The error handler will work correctly as long
+     *                                        as window.printStackTrace is exposed.
+     *        
+     *        setupWindowOnError:             Whether or not you want to setup simpleJsErrorHandler to execute when window.onError
+     *                                        is called.  Alternatively, you can just manually call simpleJsErrorHandler.report to 
+     *                                        report errors.
+     *        
+     *        guard:                         Function which that takes in the current error object, an array of previously encountered errors, and whether or 
+     *                                         not the error was generated by calling simpleJsErrorHandler.report().  Given this information, the guard function returns
+     *                                         an object which specifies whether or not we should get a stack trace using stacktrace.js, take a screenshot using
+     *                                         html2canvas.js, and/or submit an error to the server.  The object returned should have the following structure:
+     *                                         { retrieveStacktrace: false, takeScreenshot: false, submitError: false }.  Note, taking a screenshot can be 
+     *                                         particuraly computationally intensive.  If you do not specify a guard function, we'll use a default will try to 
+     *                                         retieve a stacktrace, take a screenshot and submit the error unless we've encountered more than 5 errors in the 
+     *                                         last second or if we've encountered more than 20 errors total.  We'll try to do none of the mentioned actions if 
+     *                                         any either of the two conditions is hit.
      */
     function configure(config) {
-        if (!config.submitErrorUrl) {
-            console.log("Please provide a error handler url if you want to send errors to your server.");
-        }
-        if (!config.html2canvasUrl) {
-            console.log("Please provide a url to html2canvas if your want to include a screenshot of the page when your report or handle thrown errors.");
-        }
-        if (!config.stacktraceUrl) {
-            console.log("Please provide a url to stacktrace.js if you want to include a stack trace when your report errors in all browsers.");
-        }
-
         guard = config.guard || defaultGuard;
         submitErrorUrl = config.submitErrorUrl;
         submitErrorRequestHeaders = config.submitErrorRequestHeaders;
@@ -456,7 +463,7 @@
     }
 
     //publicly exposed object
-    window.errorHandler = {
+    window.simpleJsErrorHandler = {
         configure: configure,
         report: report
     };
