@@ -2,7 +2,7 @@
 (function () {
     "use strict";
     
-    var ArgumentException, InvalidOperationException, handler, exceptions, utilities;
+    var ArgumentException, InvalidOperationException, NotImplementedException, handler, exceptions, utilities;
     
     utilities = {
          /**
@@ -105,7 +105,7 @@
         var defaultMessage = utilities.functionName(exception);
         return function throwIf(condition, message) {
             if (condition) {
-                var except = new exception({ error: new Error(message || defaultMessage) });
+                var except = new exception(message || defaultMessage);
                 throw except;
             }
         };
@@ -115,7 +115,7 @@
         var defaultMessage = utilities.functionName(exception);            
         return function reportIf(condition, message) {
             if (condition) {
-                var except = new exception({ error: new Error(message || defaultMessage) });
+                var except = new exception(message || defaultMessage);
                 except.report();
             }
         };
@@ -166,34 +166,39 @@
         sub.defaultOptionsFunc(defaultOptionsFunc || base.defaultOptionsFunc());
     };
     
-    function Exception(config) {
-        if (!(this instanceof Exception)) {
-            return new Exception(config);
+    function Exception(message, config) {
+        try {
+            if (!(this instanceof Exception)) {
+                return new Exception(config);
+            }
+            var defaultOptions = this.constructor.defaultOptionsFunc()(new Options());
+            
+            this._error = (message instanceof Error) ? message : new Error(message);
+            config = config || {};
+            this._type = config.type || this.constructor.defaultType();        
+            this._stacktrace = null;
+            this._innerException = config.innerException || null;
+            this._data = config.data || {};
+            this._options = config.options ? config.options(defaultOptions) : defaultOptions;
+            this._guardedOptions = exceptions.handler.guard().restrict(this._options, this);
+            
+            this._listeners = [];
+            
+            if (this._guardedOptions.stacktrace()) {
+                this._stacktrace = this._retrieveStacktrace();
+            }
+            if (this._guardedOptions.screenshot()) {
+                this._takeScreenshot();
+            }
         }
-        var defaultOptions = this.constructor.defaultOptionsFunc()(new Options());
-        this._type = config.type || this.constructor.defaultType();        
-        this._error = config.error;
-        this._stacktrace = null;
-        this._innerException = config.innerException || null;
-        this._data = config.data || {};
-        this._options = config.options ? config.options(defaultOptions) : defaultOptions;
-        this._guardedOptions = exceptions.handler.guard().restrict(this._options, this);
-        
-        this._listeners = [];
-        
-        if (this._guardedOptions.stacktrace()) {
-            this._stacktrace = this._retrieveStacktrace();
-        }
-        if (this._guardedOptions.screenshot()) {
-            this._takeScreenshot();
+        catch (e) {
+            this._screenshotComplete = true;
+            console.log("Error in exceptions.js:");
+            console.log(e);
         }
     }
     //static functions
     createCustomException._mixStaticFunctions(Exception);
-    
-    Exception.shouldNeverGetHere = function () {
-        throw new Exception({ error: new Error("Should never get here.") });
-    };
     
     //member functions
     Exception.prototype = {
@@ -216,11 +221,17 @@
             return this._error;
         },
         report: function () {
-            if (!this._screenshotComplete && this._guardedOptions.screenshot()) {
-                this._listeners.push(this._report);
+            try {
+                if (!this._screenshotComplete && this._guardedOptions.screenshot()) {
+                    this._listeners.push(this._report);
+                }
+                else {
+                    this._report();
+                }
             }
-            else {
-                this._report();
+            catch (e) {
+                console.log("Error in exceptions.js:");
+                console.log(e);
             }
         },
         _report: function () {
@@ -260,22 +271,21 @@
             }
             else {
                 callback = function (canvas) {
-                    try {
-                        this.data().screenshot = canvas.toDataURL("image/png");
-                    } catch (e) {
-                        console.log("Error in exceptions.js:");
-                        console.log(e);
-                    }
-                    finally {
-                        this._screenshotComplete = true;
-                    }
+                    this.data().screenshot = canvas.toDataURL("image/png");
+                    this._screenshotComplete = true;
                     for (var i in this._listeners) {
                         this._listeners[i].call(self);
                     }
                 };
                 window.html2canvas(document.body, {
                     onrendered: function (canvas) {
-                        callback.call(self, canvas);
+                        try {
+                            callback.call(self, canvas);
+                        } catch (e) {
+                            this._screenshotComplete = true;                            
+                            console.log("Error in exceptions.js:");
+                            console.log(e);
+                        }
                     }
                 });
             }
@@ -319,15 +329,15 @@
     };
     
     //setup
-    Exception.defaultType("Error");
+    Exception.defaultType("Exception");
     Exception.defaultOptionsFunc(function (o) {
         return o.toggleAll(true);
     });
     
     ArgumentException = createCustomException({ 
-        exception: function ArgumentException(config) {
+        exception: function ArgumentException(message, config) {
             if (!(this instanceof ArgumentException)) {
-                return new ArgumentException(config);
+                return new ArgumentException(message, config);
             }
             Exception.call(this, config);
         },
@@ -336,18 +346,29 @@
     });
     
     InvalidOperationException = createCustomException({ 
-        exception: function InvalidOperationException(config) {
+        exception: function InvalidOperationException(message, config) {
             if (!(this instanceof InvalidOperationException)) {
-                return new InvalidOperationException(config);
+                return new InvalidOperationException(message, config);
             }
             Exception.call(this, config);
         },
         baseException: Exception,
-        defaultType: "Invalid Operation Exception"
+        defaultType: "InvalidOperationException"
     });
     InvalidOperationException.shouldNeverGetHere = function () {
-        throw invalidOperationException(new Error("Should never get here."));
+        throw invalidOperationException("Should never get here.");
     };
+    
+    NotImplementedException = createCustomException({ 
+        exception: function NotImplementedException(message, config) {
+            if (!(this instanceof NotImplementedException)) {
+                return new NotImplementedException(message, config);
+            }
+            Exception.call(this, config);
+        },
+        baseException: Exception,
+        defaultType: "NotImplementedException"
+    });
     
     
     function Guard() {
@@ -440,23 +461,30 @@
                 exception = errorObj;
             }
             else if (errorObj instanceof Error) {
-                exception = new Exception({
-                    error: errorObj,
+                exception = new Exception(errorObj, {
+                    options: function (o) {
+                        return o.stacktrace(false);
+                    }});
+            }
+            else if (errorObj !== undefined) {
+                exception = new Exception(errorMsg, {
+                    data: {
+                        thrownError: errorObj
+                    },
                     options: function (o) {
                         return o.stacktrace(false);
                     }});
             }
             else {
-                exception = new Exception({
-                    error: new Error(errorMsg),
+                exception = new Exception(errorMsg, {
                     options: function (o) {
                         return o.stacktrace(false);
                     }});
             }
             data = exception.data();
-            data.url = url;
-            data.lineNumber = lineNumber;
-            data.columnNumber = columnNumber;
+            data.url = data.url || url;
+            data.lineNumber = data.lineNumber || lineNumber;
+            data.columnNumber = data.columnNumber || columnNumber;
             exception.report();
         },
         
@@ -478,7 +506,7 @@
         
         loadStacktraceJs: function () {
             utilities.scriptTag(handler.stacktraceUrl(), function () {
-                handler._attemptedToLoadStacktraceJs = true;
+                handler._attemptedToLoadStacktraceJs = true;    
             });
         },
         
