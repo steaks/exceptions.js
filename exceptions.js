@@ -220,6 +220,9 @@
         error: function () {
             return this._error;
         },
+        message: function () {
+            return this.error().message;
+        },
         report: function () {
             try {
                 if (!this._screenshotComplete && this._guardedOptions.screenshot()) {
@@ -234,6 +237,20 @@
                 console.log(e);
             }
         },
+        toSimpleObject: function () {
+            var simpleObject = {
+                message: this.message(),
+                innerException: this.innerException() ? this.innerException().toSimpleObject() : null,
+                stacktrace: this.stacktrace(),
+                data: this.data(),
+                error: this.error()
+            };
+            return simpleObject;
+        },
+        toJSONString: function () {
+            var simpleObject = this.toSimpleObject();
+            return JSON.stringify(simpleObject);
+        },        
         _report: function () {
             if(this._guardedOptions.post()) {
                 this._post();
@@ -305,25 +322,9 @@
             http.setRequestHeader("Content-type", "application/x-www-form-urlencoded; charset=UTF-8");
             http.send("exception=" + encodeURIComponent(jsonString));
         },
-        toSimpleObject: function () {
-            var simpleObject = {
-                innerException: this.innerException() ? this.innerException().toSimpleObject() : null,
-                stacktrace: this.stacktrace(),
-                data: this.data()
-            };
-            this._mergeErrorIntoSimpleObject(simpleObject);
-            return simpleObject;
-        },
         _callback: function () {
             var callback = exceptions.handler.callback();
             callback(this);
-        },
-        _mergeErrorIntoSimpleObject: function (simpleObject) {
-            simpleObject.message = this._error.message;
-        },
-        toJSONString: function () {
-            var simpleObject = this.toSimpleObject();
-            return JSON.stringify(simpleObject);
         },
         constructor: Exception
     };
@@ -429,65 +430,7 @@
         _isSetup: false,
         _handleAllErrors: true,
         _handleExceptions: true,
-        _reportedExceptions: [],
-        _setup: function () {
-            if(handler._isSetup) {
-                return;
-            }
-            var previousOnError = window.onerror;
-            window.onerror = function (errorMsg, url, lineNumber, columnNumber, errorObj) {
-                if (typeof previousOnError === "function") {
-                    previousOnError(errorMsg, url, lineNumber, columnNumber, errorObj);
-                }
-                if (handler.handleAllErrors()) {
-                    handler._handle(errorMsg, url, lineNumber, columnNumber, errorObj);
-                }
-                else if (handler.handleExceptions() && errorObj instanceof Exception) {
-                    handler._handle(errorMsg, url, lineNumber, columnNumber, errorObj);
-                }
-            };
-            handler._isSetup = true;
-        },
-        
-        _setupDefaultGuard: function () {
-            handler.guard(function (g) {
-                return g.restrictByExceptionsCount(10, 10);
-            });
-        },
-        
-        _handle: function (errorMsg, url, lineNumber, columnNumber, errorObj) {
-            var data, exception;
-            if (errorObj instanceof Exception) {
-                exception = errorObj;
-            }
-            else if (errorObj instanceof Error) {
-                exception = new Exception(errorObj, {
-                    options: function (o) {
-                        return o.stacktrace(false);
-                    }});
-            }
-            else if (errorObj !== undefined) {
-                exception = new Exception(errorMsg, {
-                    data: {
-                        thrownError: errorObj
-                    },
-                    options: function (o) {
-                        return o.stacktrace(false);
-                    }});
-            }
-            else {
-                exception = new Exception(errorMsg, {
-                    options: function (o) {
-                        return o.stacktrace(false);
-                    }});
-            }
-            data = exception.data();
-            data.url = data.url || url;
-            data.lineNumber = data.lineNumber || lineNumber;
-            data.columnNumber = data.columnNumber || columnNumber;
-            exception.report();
-        },
-        
+        _reportedExceptions: [],            
         handleAllErrors: function (enable) {
             if (enable !== undefined) {
                 handler._handleAllErrors = Boolean(enable);
@@ -619,6 +562,63 @@
                 }
             }
             return i + 1;
+        },
+        _setup: function () {
+            if(handler._isSetup) {
+                return;
+            }
+            var previousOnError = window.onerror;
+            window.onerror = function (errorMsg, url, lineNumber, columnNumber, errorObj) {
+                if (typeof previousOnError === "function") {
+                    previousOnError(errorMsg, url, lineNumber, columnNumber, errorObj);
+                }
+                if (handler.handleAllErrors()) {
+                    handler._handle(errorMsg, url, lineNumber, columnNumber, errorObj);
+                }
+                else if (handler.handleExceptions() && errorObj instanceof Exception) {
+                    handler._handle(errorMsg, url, lineNumber, columnNumber, errorObj);
+                }
+            };
+            handler._isSetup = true;
+        },
+        
+        _setupDefaultGuard: function () {
+            handler.guard(function (g) {
+                return g.restrictByExceptionsCount(10, 10);
+            });
+        },
+        
+        _handle: function (errorMsg, url, lineNumber, columnNumber, errorObj) {
+            var data, exception;
+            if (errorObj instanceof Exception) {
+                exception = errorObj;
+            }
+            else if (errorObj instanceof Error) {
+                exception = new Exception(errorObj, {
+                    options: function (o) {
+                        return o.stacktrace(false);
+                    }});
+            }
+            else if (errorObj !== undefined) {
+                exception = new Exception(errorMsg, {
+                    data: {
+                        thrownError: errorObj
+                    },
+                    options: function (o) {
+                        return o.stacktrace(false);
+                    }});
+            }
+            else {
+                exception = new Exception(errorMsg, {
+                    options: function (o) {
+                        return o.stacktrace(false);
+                    }});
+            }
+            data = exception.data();
+            data.url = data.url || url;
+            data.lineNumber = data.lineNumber || lineNumber;
+            data.columnNumber = data.columnNumber || columnNumber;
+            exception.report();
         }
     };
         
@@ -629,6 +629,7 @@
         Exception: Exception,
         ArgumentException: ArgumentException,
         InvalidOperationException: InvalidOperationException,
+        NotImplementedException: NotImplementedException,
         handler: handler,
         createCustomException: createCustomException
     };
