@@ -1,7 +1,8 @@
-window = {};
+window = {
+    printStackTrace: function () { }
+};
 var nodeunit = require("nodeunit");
-require("exceptions");
-require("stacktrace");
+require("./exceptions");
 
 module.exports = {
     setUp: function (callback) {
@@ -39,7 +40,7 @@ module.exports = {
     //Options and guards
     testOptionCallback: function (test) {
         var exception = new window.exceptions.Exception("foo", {
-            options: function (o) {
+            optionsFunc: function (o) {
                 return o.callback(false);
             }
         });
@@ -48,7 +49,7 @@ module.exports = {
     },
     testOptionAllfalse: function (test) {
         var exception = new window.exceptions.Exception("foo", {
-            options: function (o) {
+            optionsFunc: function (o) {
                 return o.toggleAll(false);
             }
         });
