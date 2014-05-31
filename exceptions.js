@@ -32,17 +32,6 @@
             };
             // use body if available. more safe in IE
             (document.body || document.head).appendChild(s);
-        },
-        /**
-         * Get the name of a function
-         * @function functionName
-         * @param {function} function
-         */
-        functionName: function (fun) {
-            var ret = fun.toString();
-            ret = ret.substr('function '.length);
-            ret = ret.substr(0, ret.indexOf('('));
-            return ret;
         }
     };
     
@@ -134,14 +123,17 @@
     };
     
     /**
-     * Create a custom exception
+     * Create a custom exception class with the createCustomException function
      * @param {object} config object for creating an exception
-     *        exception - constructor for the custom exception
-     *        baseException - exception that the custom exception inherits from
+     *        exception - {function} Constructor for the custom exception.  This constructor should 
+     *        			  call its base exception's constructor.  For debugging convenience, 
+     *        			  you'll probably want this function to have a name.
+     *        baseException - {Exception} Exception that the custom exception will inherit from
      *        defaultType - {string} default type of the exception
-     *        defaultOptionsFunc - {function} function that receives an Options
-     *            object as a parameter and returns that options object with
-     *            the default options enabled or disabled.
+     *        defaultOptionsFunc - {function} Provide a function that takes in an Options object 
+     *        					   and returns that Options object with enabled or disabled options.  
+     *        					   You'll usually want to enable all options by default. 
+     * @return Custom exception.  The type will be what you provided in the config.exception property.
      */
     function createCustomException(config) {
         createCustomException._mixStaticFunctions(config.exception);
@@ -157,26 +149,46 @@
     }
     
     createCustomException._createThrowIf = function (exception) {
-        var defaultMessage = utilities.functionName(exception);
+               /**
+                * Throw an exception if the condition is true.
+                * @function throwIf
+                * @param {bool} throw the exception if true
+                * @param {string} optional - create an exception with the 
+                *           message if provided.  Else fallback to the default
+                *           type of the exception.
+                */
         return function throwIf(condition, message) {
             if (condition) {
-                var except = new exception(message || defaultMessage);
+                var except = new exception(message || "Thrown exception: " + exception.defaultType());
                 throw except;
             }
         };
     };
     
     createCustomException._createReportIf = function (exception) {
-        var defaultMessage = utilities.functionName(exception);            
+                /**
+                 * Report an exception if the condition is true.
+                 * @function reportIf
+                 * @param {bool} report the exception if true
+                 * @param {string} optional - create an exception with the 
+                 *           message if provided.  Else fallback to the default
+                 *           type of the exception.
+                 */
         return function reportIf(condition, message) {
             if (condition) {
-                var except = new exception(message || defaultMessage);
+                var except = new exception(message || "Reported exception: " + exception.defaultType());
                 except.report();
             }
         };
     };
     
     createCustomException._createDefaultType = function (exception) {
+                /**
+                 * Get or set the default type of the exception.
+                 * @param {string} default type of the exception
+                 * @return exception if type is defined.  Default type of 
+                 *            the exception if defaultType is not defined.
+                 */
         return function defaultType(type) {
             if (type) {
                 exception._defaultType = type;
@@ -229,7 +241,8 @@
      * @param {string|Error} create an Exception with an Error object or error message.  This
      *        constructor will create a new Error(message) if you pass in a message or simply
      *        use the provided Error as the underlying Error it wraps.
-     * @param {Object} optional config object
+     * @param {Object} optional - Configure the exception with a config object.  All properties 
+     *           on the config are optional.
      *        type - {string} provide a type to override the default exception type.  Type is
      *               purely used for reporting purposes.  No functionality pivots off of type.
      *        innerException - {Exception} Exceptions are recursive, so you can create an inner
@@ -282,8 +295,9 @@
     //member functions
     Exception.prototype = {
         /**
-         * Get the inner Exception
+         * Get the inner exception
          * @method
+         * @return inner exception
          */
         innerException: function () {
             return this._innerException;
@@ -291,6 +305,7 @@
         /**
          * Get the stacktrace
          * @method
+         * @return stacktrace
          */
         stacktrace: function () {
             return this._stacktrace;
@@ -298,6 +313,7 @@
         /**
          * Get the data object
          * @method
+         * @return data object
          */
         data: function () {
             return this._data;
@@ -357,7 +373,7 @@
             }
         },
         /**
-         * Convert an Exception into a simple object.  This is useful for serialization.
+         * Convert an Exception into a simple object that is easier to serialize.
          * @return {object} - {
          *         type: type,
          *         message: message,
@@ -365,8 +381,9 @@
          *         data: data,
          *         innerException: inner exception,
          *         error: underlying error
+         * }
          */
-        toSimpleObject: function () {
+        toSerializableObject: function () {
             var simpleObject = {
                 type: this.type(),
                 message: this.message(),
@@ -378,11 +395,11 @@
             return simpleObject;
         },
         /**
-         * Convert an simple exception object created from toSimpleObject into a JSON string.
-         * @return {string} JSON string representation of the error.
+         * Convert a serializable exception object created from toSerializableObject into a JSON string.
+         * @return {string} JSON string of serializable exception object
         */
         toJSONString: function () {
-            var simpleObject = this.toSimpleObject();
+            var simpleObject = this.toSerializableObject();
             return JSON.stringify(simpleObject);
         },        
         _report: function () {
@@ -470,8 +487,10 @@
     });
     
     /**
-     * ArgumentException is an exception that inherits from Exception with a default type: "ArgumentException."
-     * Use ArgumentException to throw or report invalid arguments.
+     * ArgumentException inherits from Exception.  It has the same 
+     * static functions and methods as Exception.  However, it's default type is
+     * "ArgumentException" rather than "Exception."  Use ArgumentException to throw 
+     *  or report invalid arguments.
      * @constructor
      */
     ArgumentException = createCustomException({ 
@@ -486,7 +505,9 @@
     });
     
     /**
-     * InvalidOperationException is an exception that inherits from Exception with a default type: "InvalidOperationException."
+     * InvalidOperationException inherits from Exception.  It has the 
+     * same static functions and methods as Exception.  However, 
+     * it's default type is "InvalidOperationException" rather than "Exception."  
      * Use InvalidOperationException to throw or report invalid operations.
      * @constructor
      */
@@ -500,14 +521,13 @@
         baseException: Exception,
         defaultType: "InvalidOperationException"
     });
-
-    InvalidOperationException.shouldNeverGetHere = function () {
-        throw new InvalidOperationException("Should never get here.");
-    };
     
     /**
-     * NotImplementedException is an exception that inherits from Exception with a default type: "NotImplementedException."
-     * Use NotImplementedException to throw or report attemps of executed code that is not implemented.
+     * NotImplementedException inherits from Exception.  It has the same 
+     * static functions and methods as Exception.  However, it's default 
+     * type is "NotImplementedException" rather than "Exception."  Use 
+     * NotImplementedException to throw or report attempts of executed 
+     * code that is not implemented.
      * @constructor
      */
     NotImplementedException = createCustomException({ 
@@ -520,10 +540,6 @@
         baseException: Exception,
         defaultType: "NotImplementedException"
     });
-
-    NotImplementedException.shouldNeverGetHere = function () {
-        throw new NotImplementedException("Should never get here.");
-    };
     
     /**
      * Performing exception operations can be expensive or superfluous sometimes.  For example, you may not want to take
@@ -863,8 +879,8 @@
         ArgumentException: ArgumentException,
         InvalidOperationException: InvalidOperationException,
         NotImplementedException: NotImplementedException,
+        createCustomException: createCustomException,
         handler: handler,
-        createCustomException: createCustomException
     };
     
     window.exceptions = exceptions;

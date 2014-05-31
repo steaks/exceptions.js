@@ -81,12 +81,12 @@ module.exports = {
         test.equals(window.exceptionReported, undefined);
         test.done();
     },
-    testToSimpleObject: function (test) {
+    testToSerializableObject: function (test) {
         var data = { foo: "bar" }
             exception = new window.exceptions.Exception("foo", {
                 data: data
             }),
-            simpleObject = exception.toSimpleObject();
+            simpleObject = exception.toSerializableObject();
         test.equals(simpleObject.message, "foo");
         test.equals(simpleObject.data, data);
         test.done();             
