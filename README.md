@@ -278,7 +278,7 @@ var ArgumentException = createCustomException({
         if (!(this instanceof ArgumentException)) {
             return new ArgumentException(message, config);
         }
-        Exception.call(this, config);
+        Exception.call(this, message, config);
     },
     baseException: Exception, 
     defaultType: "ArgumentException"

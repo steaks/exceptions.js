@@ -432,7 +432,7 @@
             }
             handler._pushReportedException(this);
             console.log("Exception reported:");
-            console.log(this);
+            console.log(this.toSerializableObject());
         },
         _retrieveStacktrace: function () {
             var stack = this.error().stack;
@@ -519,7 +519,7 @@
             if (!(this instanceof ArgumentException)) {
                 return new ArgumentException(message, config);
             }
-            Exception.call(this, config);
+            Exception.call(this, message, config);
         },
         baseException: Exception, 
         defaultType: "ArgumentException"
@@ -537,7 +537,7 @@
             if (!(this instanceof InvalidOperationException)) {
                 return new InvalidOperationException(message, config);
             }
-            Exception.call(this, config);
+            Exception.call(this, message, config);
         },
         baseException: Exception,
         defaultType: "InvalidOperationException"
@@ -556,7 +556,7 @@
             if (!(this instanceof NotImplementedException)) {
                 return new NotImplementedException(message, config);
             }
-            Exception.call(this, config);
+            Exception.call(this, message, config);
         },
         baseException: Exception,
         defaultType: "NotImplementedException"
