@@ -19,7 +19,7 @@ exeptions.handler
 		
 ```javascript
 //report an exception
-var exception = new Exception("Oh no!");
+var exception = new exceptions.Exception("Oh no!");
 exception.report();
 
 //throw an exception
@@ -34,25 +34,115 @@ throw new exceptions.Exception("Oh no!", {
 
 ```
 
-Namespace
+API
 ----------------------
 exceptions.js adds the exceptions property to the window object which exposes:
+
+| Property | Description |
+| -------- | ----------- |
+| Exception | Base exception.  All other exceptions inherit from Exception. |
+| ArgumentException | An exception inherited from Exception that is useful for throwing or reporting exceptions related to function arguments |
+| InvalidOperationException | An exception inherited from Exception that is useful for throwing or reporting exceptions related to invalid operations |
+| NotImplementedException | An exception inherited from Exception that is useful for throwing or reporting exceptions related to unimplemented code |
+| createCustomException | Function you can use to create custom functions.  ArgumentException, InvalidOperationException, and NotImplementedException are all created with createCustomException |
+| handler | Object responsible for handling errors thrown that hit window.onerror and specifying global configurations including the stacktrace.js url, html2canvas.js url, post url (to make a post request when an error is reported), post headers, callback (function executed when an error is reported). |
+
+### Exception
+
+##### constructor
+Exception is the base Exception class that wraps an error and provides extra functionality that the native Error class does not provide.  The Exception class can be extended to create custom exceptions with the exceptions.createCustomException.
+
+_parameters_
+
+| Parameter | Type | Required | Description |
+| --------  | ---- | -------- | ----------- |
+| message | string or Error | no | Create an Exception with an Error object or error message.  This constructor will create a new Error(message) if you pass in a message or simply use the provided Error as the underlying Error it wraps. |
+| config | object | no | Configure the exception with a config object.  All properties on the config are optional. |
+
+_config_
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| type | string | Provide a type to override the default exception type.  Type is purely used for reporting purposes.  No functionality pivots off of type. |
+| innerException | Exception | Exceptions are recursive, so you can create an inner exception that is wrapped by the current exception. |
+| data | object | Provide any information you want to associate with this Exception.  You'll notice a screenshot property is added to the data object when the screenshot option is enabled for this Exception.  Also, browser and browser version properties are added to the data object. |
+| optionsFunc | function | Provide a function that takes in an Options object and returns that Options object with enabled or disabled options.  The received options object will be Options object returned from the defaultOptionsFunc for the exception.  In most cases, the defaultOptionsFunc returns an Options object with all options enabled. |
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| Exception | The created exception |
+
 ```javascript
-window.exceptions = {
-    //Base Exception.  All other exceptions inherit from Exception
-    Exception: Exception,
-    //Argument excpetion, useful for throwing or reporting exceptions related to function arguments
-    ArgumentException: ArgumentException,
-    //Invalid operation excpetion, useful for throwing or reporting exceptions related to invalid operations
-    InvalidOperationException: InvalidOperationException,
-    //Not implemented exception, useful for throwing or reporting exceptions related to unimplemented code
-    NotImplementedException: NotImplementedException,
-    //Function you can use to create custom functions.  ArgumentException, InvalidOperationException, and
-    //NotImplementedException are all created with createCustomException
-    createCustomException: createCustomException,
-    //object responsible for handling errors thrown that hit window.onerror and specifying global configurations
-    //including the stacktrace.js url, html2canvas.js url, post url (to make a post request when an error is reported),
-    //post headers, callback (function executed when an error is reported).
-    handler: handler,
-};
+var foo = new exceptions.Exception("Oh no!");
+var bar = new exceptions.Exception(new Error("Oh no!");
+var baz = new exceptions.Exception("Oh no!" { 
+    type: "OverriddenExceptionType",
+    innerException: foo,
+    data { 
+        foo: "bar"
+    },
+    optionsFunc: function (o) {
+        return o.stacktrace(false)
+            .screenshot(false);
+    }
+});
 ```
+
+##### static functions
+###### throwIf
+Throw an exception if the condition is true.
+
+_parameters_
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| condition | bool | yes | throw the exception if true |
+| message | string | no | create an exception with the message if provided.  Else fallback to the default type of the exception. |
+
+_return_
+
+undefined
+
+```javascript
+exceptions.Exception.throwIf(1 === 1, "Error message");
+```
+
+###### reportIf
+
+Report an exception if the condition is true.
+
+_parameters_
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| condition | bool | yes | report the exception if true |
+| message | string | no | create an exception with the message if provided.  Else fallback to the default type of the exception. |
+
+_return_
+
+undefined
+
+```javascript
+exceptions.Exception.reportIf(1 === 1, "Error message");
+```
+
+###### defaultType
+
+Get or set the default type of the exception.
+
+_parameters_
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| type | string | no | default type of the exception |
+| message | string | no | create an exception with the message if provided.  Else fallback to the default type of the exception. |
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| Exception or string | exception if type is defined.  Default type of the exception if defaultType is not defined. |
+
+##### methods
