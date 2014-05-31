@@ -65,7 +65,7 @@ _config_
 | -------- | ---- | ----------- |
 | type | string | Provide a type to override the default exception type.  Type is purely used for reporting purposes.  No functionality pivots off of type. |
 | innerException | Exception | Exceptions are recursive, so you can create an inner exception that is wrapped by the current exception. |
-| data | object | Provide any information you want to associate with this Exception.  You'll notice a screenshot property is added to the data object when the screenshot option is enabled for this Exception.  Also, browser and browser version properties are added to the data object. |
+| data | object | Provide any information you want to associate with this Exception.  You'll notice a screenshot property is added to the data object when the screenshot option is enabled for this Exception.  Also, a browser property is added to the data object. |
 | optionsFunc | function | Provide a function that takes in an Options object and returns that Options object with enabled or disabled options.  The received options object will be Options object returned from the defaultOptionsFunc for the exception.  In most cases, the defaultOptionsFunc returns an Options object with all options enabled. |
 
 _return_

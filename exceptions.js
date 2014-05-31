@@ -32,6 +32,24 @@
             };
             // use body if available. more safe in IE
             (document.body || document.head).appendChild(s);
+        },
+        getBrowser: function() {
+            var ua= navigator.userAgent, 
+                tem, 
+                M = ua.match(/(opera|chrome|safari|firefox|msie|trident(?=\/))\/?\s*(\d+)/i) || [];
+            if (/trident/i.test(M[1])){
+                tem =  /\brv[ :]+(\d+)/g.exec(ua) || [];
+                return 'IE '+ (tem[1] || '');
+            }
+            if (M[1] === 'Chrome'){
+                tem = ua.match(/\bOPR\/(\d+)/);
+                if (tem !== null) {
+                    return 'Opera ' + tem[1];
+                }
+            }
+            M = M[2]? [M[1], M[2]]: [navigator.appName, navigator.appVersion, '-?'];
+            if ((tem = ua.match(/version\/(\d+)/i)) !== null) M.splice(1, 1, tem[1]);
+            return M.join(' ');
         }
     };
     
@@ -126,13 +144,13 @@
      * Create a custom exception class with the createCustomException function
      * @param {object} config object for creating an exception
      *        exception - {function} Constructor for the custom exception.  This constructor should 
-     *        			  call its base exception's constructor.  For debugging convenience, 
-     *        			  you'll probably want this function to have a name.
+     *                      call its base exception's constructor.  For debugging convenience, 
+     *                      you'll probably want this function to have a name.
      *        baseException - {Exception} Exception that the custom exception will inherit from
      *        defaultType - {string} default type of the exception
      *        defaultOptionsFunc - {function} Provide a function that takes in an Options object 
-     *        					   and returns that Options object with enabled or disabled options.  
-     *        					   You'll usually want to enable all options by default. 
+     *                               and returns that Options object with enabled or disabled options.  
+     *                               You'll usually want to enable all options by default. 
      * @return Custom exception.  The type will be what you provided in the config.exception property.
      */
     function createCustomException(config) {
@@ -249,8 +267,8 @@
      *                         exception that is wrapped by the current exception.
      *        data - {object} - Provide any information you want to associate with this Exception.
      *               You'll notice a screenshot property is added to the data object when the screenshot
-     *               option is enabled for this Exception.  Also, browser and browser version properties
-     *               are added to the data object.
+     *               option is enabled for this Exception.  Also, a browser property is added to the 
+     *               data object.
      *        optionsFunc - {function} - Provide a function that takes in an Options object and returns
      *                      that Options object with enabled or disabled options.  The received options
      *                      object will be Options object returned from the defaultOptionsFunc for the 
@@ -263,18 +281,21 @@
             if (!(this instanceof Exception)) {
                 return new Exception(config);
             }
-            var defaultOptions = this.constructor.defaultOptionsFunc()(new Options());
+            var defaultOptions = this.constructor.defaultOptionsFunc()(new Options()),
+                data;
             
             this._error = (message instanceof Error) ? message : new Error(message);
             config = config || {};
             this._type = config.type || this.constructor.defaultType();        
             this._stacktrace = null;
             this._innerException = config.innerException || null;
-            this._data = config.data || {};
+            this._data = config.data || {}; 
             this._options = config.optionsFunc ? config.optionsFunc(defaultOptions) : defaultOptions;
             this._guardedOptions = exceptions.handler.guard()._restrict(this._options, this);
-            
             this._listeners = [];
+            
+            data = this.data();
+            data.browser = data.browser || utilities.getBrowser();
             
             if (this._guardedOptions.stacktrace()) {
                 this._stacktrace = this._retrieveStacktrace();
