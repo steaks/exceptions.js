@@ -33,3 +33,26 @@ throw new exceptions.Exception("Oh no!", {
 });
 
 ```
+
+Namespace
+----------------------
+exceptions.js adds the exceptions property to the window object which exposes:
+```javascript
+window.exceptions = {
+    //Base Exception.  All other exceptions inherit from Exception
+    Exception: Exception,
+    //Argument excpetion, useful for throwing or reporting exceptions related to function arguments
+    ArgumentException: ArgumentException,
+    //Invalid operation excpetion, useful for throwing or reporting exceptions related to invalid operations
+    InvalidOperationException: InvalidOperationException,
+    //Not implemented exception, useful for throwing or reporting exceptions related to unimplemented code
+    NotImplementedException: NotImplementedException,
+    //Function you can use to create custom functions.  ArgumentException, InvalidOperationException, and
+    //NotImplementedException are all created with createCustomException
+    createCustomException: createCustomException,
+    //object responsible for handling errors thrown that hit window.onerror and specifying global configurations
+    //including the stacktrace.js url, html2canvas.js url, post url (to make a post request when an error is reported),
+    //post headers, callback (function executed when an error is reported).
+    handler: handler,
+};
+```
