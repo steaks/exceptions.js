@@ -237,3 +237,12 @@ _return_
 | string | JSON string of serializable exception object |
 
 
+### ArgumentException
+ArgumentException inherits from Exception.  It has the same static functions and methods as Exception.  However, it's default type is "ArgumentException" rather than "Exception."  Use ArgumentException to throw or report invalid arguments.
+
+### InvalidOperationException
+InvalidOperationException inherits from Exception.  It has the same static functions and methods as Exception.  However, it's default type is "InvalidOperationException" rather than "Exception."  Use InvalidOperationException to throw or report invalid operations.
+
+### NotImplementedException
+NotImplementedException inherits from Exception.  It has the same static functions and methods as Exception.  However, it's default type is "NotImplementedException" rather than "Exception."  Use NotImplementedException to throw or report attempts of executed code that is not implemented.
+
