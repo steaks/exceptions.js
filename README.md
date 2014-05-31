@@ -246,3 +246,41 @@ InvalidOperationException inherits from Exception.  It has the same static funct
 ### NotImplementedException
 NotImplementedException inherits from Exception.  It has the same static functions and methods as Exception.  However, it's default type is "NotImplementedException" rather than "Exception."  Use NotImplementedException to throw or report attempts of executed code that is not implemented.
 
+##createCustomException
+Create a custom exception class with the createCustomException function
+
+_parameters_
+
+| Parameter | Type | Required | Description |
+| --------  | ---- | -------- | ----------- |
+| config | object | yes | config object to create the custom exception |
+
+_config_
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| exception | function | Constructor for the custom exception.  This constructor should call its base exception's constructor.  For debugging convenience, you'll probably want this function to have a name. |
+| baseException | Exception | Exception that the custom exception will inherit from |
+| defaultType | string | Default type of the exception |
+| defaultOptionsFunc | function | Provide a function that takes in an Options object and returns that Options object with enabled or disabled options.  You'll usually want to enable all options by default. |
+
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| {object} | Custom exception.  The type will be what you provided in the config.exception property. |
+
+
+```javascript
+var ArgumentException = createCustomException({ 
+    exception: function ArgumentException(message, config) {
+        if (!(this instanceof ArgumentException)) {
+            return new ArgumentException(message, config);
+        }
+        Exception.call(this, config);
+    },
+    baseException: Exception, 
+    defaultType: "ArgumentException"
+});
+```
