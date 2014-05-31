@@ -101,9 +101,6 @@ _parameters_
 | condition | bool | yes | throw the exception if true |
 | message | string | no | create an exception with the message if provided.  Else fallback to the default type of the exception. |
 
-_return_
-
-undefined
 
 ```javascript
 exceptions.Exception.throwIf(1 === 1, "Error message");
@@ -120,9 +117,6 @@ _parameters_
 | condition | bool | yes | report the exception if true |
 | message | string | no | create an exception with the message if provided.  Else fallback to the default type of the exception. |
 
-_return_
-
-undefined
 
 ```javascript
 exceptions.Exception.reportIf(1 === 1, "Error message");
@@ -146,3 +140,100 @@ _return_
 | Exception or string | exception if type is defined.  Default type of the exception if defaultType is not defined. |
 
 ##### methods
+
+###### innerException
+
+Get the inner exception
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| Exception | inner exception |
+
+###### stacktrace
+
+Get the stacktrace
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| string | stacktrace |
+
+###### data
+
+Get data object
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| object | data object |
+
+###### options
+
+Get the options
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| Options | options for the exception |
+
+###### type
+
+Get the type
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| string | type of the exception |
+
+###### error
+
+Get the underlying Error
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| Error | underlying Error |
+
+###### message
+
+Get the error message
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| string | error message |
+
+###### report
+
+Report the exception (without throwing it).  Reporting an exception involves making a post request with a serialized exception object if the post option is enabled and/or executing a callback if the callback option is enabled.  The post request uses the url returned from exception.handler.postUrl() and headers returned from exception.handler.postHeaders().  It will not make a post request if no url is specified.  The callback will execute the function returned from exceptions.handlers.callback and will not execute the callback if no function is specified.
+
+
+###### toSerializableObject
+
+Convert an Exception into a simple object that is easier to serialize.
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| object | { type: type, message: message, stacktrace: stacktrace, data: data, innerException: serializable inner exception object, error: underlying error } |
+
+###### toJSONString
+
+Convert a serializable exception object created from toSerializableObject into a JSON string.
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| string | JSON string of serializable exception object |
+
+
