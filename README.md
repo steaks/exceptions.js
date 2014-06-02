@@ -44,6 +44,12 @@ exceptions.js adds the exceptions property to the window object which exposes:
 | ArgumentException | An exception inherited from Exception that is useful for throwing or reporting exceptions related to function arguments |
 | InvalidOperationException | An exception inherited from Exception that is useful for throwing or reporting exceptions related to invalid operations |
 | NotImplementedException | An exception inherited from Exception that is useful for throwing or reporting exceptions related to unimplemented code |
+| EvalException | An exception inherited from Exception that is useful for throwing or reporting exceptions related to eval errors |
+| RangeException | An exception inherited from Exception that is useful for throwing or reporting exceptions related to range errors |
+| ReferenceException | An exception inherited from Exception that is useful for throwing or reporting exceptions related to reference errors |
+| SyntaxException | An exception inherited from Exception that is useful for throwing or reporting exceptions related to syntax errors |
+| TypeException | An exception inherited from Exception that is useful for throwing or reporting exceptions related to type errors |
+| URIException | An exception inherited from Exception that is useful for throwing or reporting exceptions related to URI errors |
 | createCustomException | Function you can use to create custom functions.  ArgumentException, InvalidOperationException, and NotImplementedException are all created with createCustomException |
 | handler | Object responsible for handling errors thrown that hit window.onerror and specifying global configurations including the stacktrace.js url, html2canvas.js url, post url (to make a post request when an error is reported), post headers, callback (function executed when an error is reported). |
 
@@ -63,7 +69,7 @@ _config_
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| type | string | Provide a type to override the default exception type.  Type is purely used for reporting purposes.  No functionality pivots off of type. |
+| name | string | provide a name for the exception.  If no name is provided, we check if you manually set the name on the error created from this exception.  Otherwise, we fallback to the name of this exception's constructor.  Name is purely used for reporting purposes.  No functionality pivots off of name.  And the common case should be to not provide a name. |
 | innerException | Exception | Exceptions are recursive, so you can create an inner exception that is wrapped by the current exception. |
 | data | object | Provide any information you want to associate with this Exception.  You'll notice a screenshot property is added to the data object when the screenshot option is enabled for this Exception.  Also, a browser property is added to the data object. |
 | optionsFunc | function | Provide a function that takes in an Options object and returns that Options object with enabled or disabled options.  The received options object will be Options object returned from the defaultOptionsFunc for the exception.  In most cases, the defaultOptionsFunc returns an Options object with all options enabled. |
@@ -78,7 +84,7 @@ _return_
 var foo = new exceptions.Exception("Oh no!");
 var bar = new exceptions.Exception(new Error("Oh no!");
 var baz = new exceptions.Exception("Oh no!" { 
-    type: "OverriddenExceptionType",
+    name: "OverriddenExceptionName",
     innerException: foo,
     data { 
         foo: "bar"
@@ -99,7 +105,7 @@ _parameters_
 | Parameter | Type | Required | Description |
 | --------- | ---- | -------- | ----------- |
 | condition | bool | yes | throw the exception if true |
-| message | string | no | create an exception with the message if provided.  Else fallback to the default type of the exception. |
+| message | string | no | create an exception with the message if provided.  Else fallback to a generic message. |
 
 
 ```javascript
@@ -115,29 +121,12 @@ _parameters_
 | Parameter | Type | Required | Description |
 | --------- | ---- | -------- | ----------- |
 | condition | bool | yes | report the exception if true |
-| message | string | no | create an exception with the message if provided.  Else fallback to the default type of the exception. |
+| message | string | no | create an exception with the message if provided.  Else fallback to a generic message. |
 
 
 ```javascript
 exceptions.Exception.reportIf(1 === 1, "Error message");
 ```
-
-###### defaultType
-
-Get or set the default type of the exception.
-
-_parameters_
-
-| Parameter | Type | Required | Description |
-| --------- | ---- | -------- | ----------- |
-| type | string | no | default type of the exception |
-| message | string | no | create an exception with the message if provided.  Else fallback to the default type of the exception. |
-
-_return_
-
-| Type | Description |
-| ---- | ----------- |
-| Exception or string | exception if type is defined.  Default type of the exception if defaultType is not defined. |
 
 ##### methods
 
@@ -181,15 +170,15 @@ _return_
 | ---- | ----------- |
 | Options | options for the exception |
 
-###### type
+###### name
 
-Get the type
+Get the name
 
 _return_
 
 | Type | Description |
 | ---- | ----------- |
-| string | type of the exception |
+| string | name of the exception |
 
 ###### error
 
@@ -224,7 +213,7 @@ _return_
 
 | Type | Description |
 | ---- | ----------- |
-| object | { type: type, message: message, stacktrace: stacktrace, data: data, innerException: serializable inner exception object, error: underlying error } |
+| object | { name: name, message: message, stacktrace: stacktrace, data: data, innerException: serializable inner exception object, error: underlying error } |
 
 ###### toJSONString
 
@@ -238,13 +227,31 @@ _return_
 
 
 ### ArgumentException
-ArgumentException inherits from Exception.  It has the same static functions and methods as Exception.  However, it's default type is "ArgumentException" rather than "Exception."  Use ArgumentException to throw or report invalid arguments.
+ArgumentException inherits from Exception.  It has the same static functions and methods as Exception.  However, it's default name is "ArgumentException" rather than "Exception."  Use ArgumentException to throw or report invalid arguments.
 
 ### InvalidOperationException
-InvalidOperationException inherits from Exception.  It has the same static functions and methods as Exception.  However, it's default type is "InvalidOperationException" rather than "Exception."  Use InvalidOperationException to throw or report invalid operations.
+InvalidOperationException inherits from Exception.  It has the same static functions and methods as Exception.  However, it's default name is "InvalidOperationException" rather than "Exception."  Use InvalidOperationException to throw or report invalid operations.
 
 ### NotImplementedException
-NotImplementedException inherits from Exception.  It has the same static functions and methods as Exception.  However, it's default type is "NotImplementedException" rather than "Exception."  Use NotImplementedException to throw or report attempts of executed code that is not implemented.
+NotImplementedException inherits from Exception.  It has the same static functions and methods as Exception.  However, it's default name is "NotImplementedException" rather than "Exception."  Use NotImplementedException to throw or report attempts of executed code that is not implemented.
+
+### EvalException
+NotImplementedException inherits from Exception.  It has the same static functions and methods as Exception.  However, it's default name is "NotImplementedException" rather than "Exception."  Use NotImplementedException to throw or report attempts of executed code that is not implemented.  And the default error will be an EvalError.
+
+### RangeException
+NotImplementedException inherits from Exception.  It has the same static functions and methods as Exception.  However, it's default name is "NotImplementedException" rather than "Exception."  Use NotImplementedException to throw or report attempts of executed code that is not implemented.  And the default error will be a RangeError.
+
+### ReferenceException
+NotImplementedException inherits from Exception.  It has the same static functions and methods as Exception.  However, it's default name is "NotImplementedException" rather than "Exception."  Use NotImplementedException to throw or report attempts of executed code that is not implemented.  And the default error will be a ReferenceError.
+
+### SyntaxException
+NotImplementedException inherits from Exception.  It has the same static functions and methods as Exception.  However, it's default name is "NotImplementedException" rather than "Exception."  Use NotImplementedException to throw or report attempts of executed code that is not implemented.  And the default error will be a SyntaxError.
+
+### TypeException
+NotImplementedException inherits from Exception.  It has the same static functions and methods as Exception.  However, it's default name is "NotImplementedException" rather than "Exception."  Use NotImplementedException to throw or report attempts of executed code that is not implemented.  And the default error will be a TypeError.
+
+### URIException
+NotImplementedException inherits from Exception.  It has the same static functions and methods as Exception.  However, it's default name is "NotImplementedException" rather than "Exception."  Use NotImplementedException to throw or report attempts of executed code that is not implemented.  And the default error will be a URIError.
 
 ##createCustomException
 Create a custom exception class with the createCustomException function
@@ -261,7 +268,6 @@ _config_
 | -------- | ---- | ----------- |
 | exception | function | Constructor for the custom exception.  This constructor should call its base exception's constructor.  For debugging convenience, you'll probably want this function to have a name. |
 | baseException | Exception | Exception that the custom exception will inherit from |
-| defaultType | string | Default type of the exception |
 | defaultOptionsFunc | function | Provide a function that takes in an Options object and returns that Options object with enabled or disabled options.  You'll usually want to enable all options by default. |
 
 
@@ -269,7 +275,7 @@ _return_
 
 | Type | Description |
 | ---- | ----------- |
-| {object} | Custom exception.  The type will be what you provided in the config.exception property. |
+| {object} | Custom exception.  The type will be the function you provided in the config.exception property. |
 
 
 ```javascript
@@ -280,7 +286,6 @@ var ArgumentException = createCustomException({
         }
         Exception.call(this, message, config);
     },
-    baseException: Exception, 
-    defaultType: "ArgumentException"
+    baseException: Exception
 });
 ```

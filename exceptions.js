@@ -2,7 +2,19 @@
 (function () {
     "use strict";
     
-    var ArgumentException, InvalidOperationException, NotImplementedException, handler, exceptions, utilities, _handlerScope;
+    var ArgumentException, 
+        InvalidOperationException, 
+        NotImplementedException,
+        EvalException,
+        RangeException,
+        ReferenceException,
+        SyntaxException,
+        TypeException,
+        URIException,
+        handler, 
+        exceptions, 
+        utilities, 
+        _handlerScope;
     
     utilities = {
          /**
@@ -50,6 +62,17 @@
             M = M[2]? [M[1], M[2]]: [navigator.appName, navigator.appVersion, '-?'];
             if ((tem = ua.match(/version\/(\d+)/i)) !== null) M.splice(1, 1, tem[1]);
             return M.join(' ');
+        },
+        /**
+         * Get the name of a function
+         * @function functionName
+         * @param {function} function
+         */
+        functionName: function (fun) {
+            var ret = fun.toString();
+            ret = ret.substr('function '.length);
+            ret = ret.substr(0, ret.indexOf('('));
+            return ret;
         }
     };
     
@@ -147,7 +170,6 @@
      *                      call its base exception's constructor.  For debugging convenience, 
      *                      you'll probably want this function to have a name.
      *        baseException - {Exception} Exception that the custom exception will inherit from
-     *        defaultType - {string} default type of the exception
      *        defaultOptionsFunc - {function} Provide a function that takes in an Options object 
      *                               and returns that Options object with enabled or disabled options.  
      *                               You'll usually want to enable all options by default. 
@@ -161,7 +183,6 @@
         createCustomException._setupDefaults(
             config.exception,
             config.baseException,
-            config.defaultType, 
             config.defaultOptionsFunc);
         return config.exception;
     }
@@ -177,7 +198,7 @@
                 */
         return function throwIf(condition, message) {
             if (condition) {
-                var except = new exception(message || "Thrown exception: " + exception.defaultType());
+                var except = new exception(message || "Thrown exception: " + utilities.functionName(exception));
                 throw except;
             }
         };
@@ -194,25 +215,9 @@
                  */
         return function reportIf(condition, message) {
             if (condition) {
-                var except = new exception(message || "Reported exception: " + exception.defaultType());
+                var except = new exception(message || "Reported exception: " + utilities.functionName(exception));
                 except.report();
             }
-        };
-    };
-    
-    createCustomException._createDefaultType = function (exception) {
-                /**
-                 * Get or set the default type of the exception.
-                 * @param {string} default type of the exception
-                 * @return exception if type is defined.  Default type of 
-                 *            the exception if defaultType is not defined.
-                 */
-        return function defaultType(type) {
-            if (type) {
-                exception._defaultType = type;
-                return exception;
-            }
-            return exception._defaultType;
         };
     };
     
@@ -230,7 +235,6 @@
         var creators = {
             throwIf: createCustomException._createThrowIf(exception),
             reportIf: createCustomException._createReportIf(exception),
-            defaultType: createCustomException._createDefaultType(exception),
             defaultOptionsFunc: createCustomException._createDefaultOptions(exception)
         }, 
             staticFunction;
@@ -246,8 +250,7 @@
         sub.prototype.constructor = sub;
     };
     
-    createCustomException._setupDefaults = function (sub, base, defaultType, defaultOptionsFunc) {
-        sub.defaultType(defaultType || base.defaultType());
+    createCustomException._setupDefaults = function (sub, base, defaultOptionsFunc) {
         sub.defaultOptionsFunc(defaultOptionsFunc || base.defaultOptionsFunc());
     };
     
@@ -261,8 +264,10 @@
      *        use the provided Error as the underlying Error it wraps.
      * @param {Object} optional - Configure the exception with a config object.  All properties 
      *           on the config are optional.
-     *        type - {string} provide a type to override the default exception type.  Type is
-     *               purely used for reporting purposes.  No functionality pivots off of type.
+     *        name - {string} provide a name for the exception.  If no name is provided, we check if you
+     *                 manually set the name on the error created from this exception.  Otherwise, we fallback
+     *                 to the name of this exception's constructor.  Name is purely used for reporting purposes.  
+     *                 No functionality pivots off of type.  And the common case should be to not provide a name.
      *        innerException - {Exception} Exceptions are recursive, so you can create an inner
      *                         exception that is wrapped by the current exception.
      *        data - {object} - Provide any information you want to associate with this Exception.
@@ -281,12 +286,11 @@
             if (!(this instanceof Exception)) {
                 return new Exception(config);
             }
-            var defaultOptions = this.constructor.defaultOptionsFunc()(new Options()),
-                data;
+            var defaultOptions = this.constructor.defaultOptionsFunc()(new Options());
             
-            this._error = (message instanceof Error) ? message : new Error(message);
+            this._error = (message instanceof Error) ? message : new Error(message || "");
             config = config || {};
-            this._type = config.type || this.constructor.defaultType();        
+            this._name = config.name || this._getName();
             this._stacktrace = null;
             this._innerException = config.innerException || null;
             this._data = config.data || {}; 
@@ -294,8 +298,7 @@
             this._guardedOptions = exceptions.handler.guard()._restrict(this._options, this);
             this._listeners = [];
             
-            data = this.data();
-            data.browser = data.browser || utilities.getBrowser();
+            this._populateDefaultDataProperties();
             
             if (this._guardedOptions.stacktrace()) {
                 this._stacktrace = this._retrieveStacktrace();
@@ -347,11 +350,11 @@
             return this._options;
         },
         /**
-         * Get the type
+         * Get the name
          * @method
          */
-        type: function () {
-            return this._type;
+        name: function () {
+            return this._name;
         },
         /**
          * Get the underlying Error
@@ -396,7 +399,7 @@
         /**
          * Convert an Exception into a simple object that is easier to serialize.
          * @return {object} - {
-         *         type: type,
+         *         name: name,
          *         message: message,
          *         stacktrace: stacktrace,
          *         data: data,
@@ -406,7 +409,7 @@
          */
         toSerializableObject: function () {
             var simpleObject = {
-                type: this.type(),
+                name: this.name(),
                 message: this.message(),
                 stacktrace: this.stacktrace(),
                 data: this.data(),
@@ -422,6 +425,56 @@
         toJSONString: function () {
             var simpleObject = this.toSerializableObject();
             return JSON.stringify(simpleObject);
+        },
+        
+        toString: function () {
+            if (this.message()) {
+                return this.name() + ": " + this.message();
+            }
+            return this.name();
+        },
+        
+        _getName: function () {
+            var data = this.data(),
+                error = this.error();
+            return (error.name && error.name !== utilities.functionName(error.constructor)) ? error.name : utilities.functionName(this.constructor);
+        },
+        
+        _populateDefaultDataProperties: function () {
+            var data = this.data();
+            data.browser = data.browser || utilities.getBrowser();
+            this._mergeErrorIntoData();
+        },
+        
+        _mergeErrorIntoData: function () {
+            var data = this.data(),
+                error = this.error();
+            
+            //Microsoft specific extension
+            if (error.description && !data.description) {
+                data.description = error.description;
+            }
+            if (error.number && !data.number) {
+                data.number = error.number;
+            }
+            
+            //Mozilla specific extensions
+            if (error.fileName && !data.fileName) {
+                data.fileName = error.fileName;
+            }
+            if (error.lineNumber && !data.lineNumber) {
+                data.lineNumber = error.lineNumber;
+            }
+            if (error.columnNumber && !data.columnNumber) {
+                data.columnNumber = error.columnNumber;
+            }
+            if (error.toSource && !data.source) {
+                data.source = error.toSource();
+            }
+            
+            //Note, we do not include error.message nor error.stack.  We treat those differently
+            //because we consider them to be first order properties on an exception which don't 
+            //need to live in the data object.
         },        
         _report: function () {
             if (this._guardedOptions.post()) {
@@ -431,7 +484,7 @@
                 this._callback();
             }
             handler._pushReportedException(this);
-            console.log("Exception reported:");
+            console.log(this.toString() + " reported");
             console.log(this.toSerializableObject());
         },
         _retrieveStacktrace: function () {
@@ -502,7 +555,6 @@
     };
     
     //setup
-    Exception.defaultType("Exception");
     Exception.defaultOptionsFunc(function (o) {
         return o.toggleAll(true);
     });
@@ -521,8 +573,7 @@
             }
             Exception.call(this, message, config);
         },
-        baseException: Exception, 
-        defaultType: "ArgumentException"
+        baseException: Exception
     });
     
     /**
@@ -539,8 +590,7 @@
             }
             Exception.call(this, message, config);
         },
-        baseException: Exception,
-        defaultType: "InvalidOperationException"
+        baseException: Exception
     });
     
     /**
@@ -558,8 +608,73 @@
             }
             Exception.call(this, message, config);
         },
-        baseException: Exception,
-        defaultType: "NotImplementedException"
+        baseException: Exception
+    });
+    
+    EvalException = createCustomException({ 
+        exception: function EvalException(message, config) {
+            if (!(this instanceof EvalException)) {
+                return new EvalException(message, config);
+            }
+            var error = (message instanceof Error) ? message : new EvalError(message);
+            Exception.call(this, error, config);
+        },
+        baseException: Exception
+    });
+    
+    RangeException = createCustomException({ 
+        exception: function RangeException(message, config) {
+            if (!(this instanceof RangeException)) {
+                return new RangeException(message, config);
+            }
+            var error = (message instanceof Error) ? message : new RangeError(message);
+            Exception.call(this, error, config);
+        },
+        baseException: Exception
+    });
+    
+    ReferenceException = createCustomException({ 
+        exception: function ReferenceException(message, config) {
+            if (!(this instanceof ReferenceException)) {
+                return new ReferenceException(message, config);
+            }
+            var error = (message instanceof Error) ? message : new ReferenceError(message);
+            Exception.call(this, error, config);
+        },
+        baseException: Exception
+    });
+    
+    SyntaxException = createCustomException({ 
+        exception: function SyntaxException(message, config) {
+            if (!(this instanceof SyntaxException)) {
+                return new SyntaxException(message, config);
+            }
+            var error = (message instanceof Error) ? message : new SyntaxError(message);
+            Exception.call(this, error, config);
+        },
+        baseException: Exception
+    });
+    
+    TypeException = createCustomException({ 
+        exception: function TypeException(message, config) {
+            if (!(this instanceof TypeException)) {
+                return new TypeException(message, config);
+            }
+            var error = (message instanceof Error) ? message : new TypeError(message);
+            Exception.call(this, error, config);
+        },
+        baseException: Exception
+    });
+    
+    URIException = createCustomException({ 
+        exception: function URIException(message, config) {
+            if (!(this instanceof URIException)) {
+                return new URIException(message, config);
+            }
+            var error = (message instanceof Error) ? message : new URIError(message);
+            Exception.call(this, error, config);
+        },
+        baseException: Exception
     });
     
     /**
@@ -854,28 +969,67 @@
         },
         
         _handle: function (errorMsg, url, lineNumber, columnNumber, errorObj) {
-            var data, exception;
+            var data, exception, 
+                optionsFunc = function (o) { return o.stacktrace(false); };
+                
             if (errorObj instanceof Exception) {
                 exception = errorObj;
             }
             else if (errorObj instanceof Error) {
-                exception = new Exception(errorObj, {
-                    options: function (o) {
-                        return o.stacktrace(false);
-                    }});
+                if (errorObj instanceof EvalError) {
+                    exception = new EvalException(errorObj, {
+                        optionsFunc: optionsFunc
+                    });
+                }
+                else if (errorObj instanceof RangeError) {
+                    exception = new RangeException(errorObj, {
+                        optionsFunc: optionsFunc
+                    });
+                }
+                else if (errorObj instanceof ReferenceError) {
+                    exception = new ReferenceException(errorObj, {
+                        optionsFunc: optionsFunc
+                    });
+                }
+                else if (errorObj instanceof SyntaxError) {
+                    exception = new SyntaxException(errorObj, {
+                        optionsFunc: optionsFunc
+                    });
+                }
+                else if (errorObj instanceof TypeError) {
+                    exception = new TypeException(errorObj, {
+                        optionsFunc: optionsFunc
+                    });
+                }
+                else if (errorObj instanceof URIError) {
+                    exception = new URIException(errorObj, {
+                        optionsFunc: optionsFunc
+                    });
+                }
+                else {
+                    exception = new Exception(errorObj, {
+                        optionsFunc: optionsFunc
+                    });
+                }
             }
             else if (errorObj !== undefined) {
-                exception = new Exception(errorMsg, {
-                    data: {
-                        thrownError: errorObj
-                    },
-                    options: function (o) {
-                        return o.stacktrace(false);
-                    }});
+                if (typeof errorObj === "string" || errorObj instanceof String) {
+                    exception = new Exception(errorMsg, {
+                        optionsFunc: optionsFunc
+                    });
+                }
+                else {
+                    exception = new Exception(errorMsg, {
+                        data: {
+                            errorWithUnknownType: errorObj
+                        },
+                        optionsFunc: optionsFunc 
+                    });
+                }
             }
             else {
                 exception = new Exception(errorMsg, {
-                    options: function (o) {
+                    optionsFunc: function (o) {
                         return o.stacktrace(false);
                     }});
             }
@@ -889,7 +1043,7 @@
         _pushReportedException: function (exception) {
             var reportedExceptions = handler.reportedExceptions();
             reportedExceptions.push({ exception: exception, timestamp: Date.now()});
-        },
+        }
     };
         
     handler._setupDefaultGuard();
@@ -900,6 +1054,12 @@
         ArgumentException: ArgumentException,
         InvalidOperationException: InvalidOperationException,
         NotImplementedException: NotImplementedException,
+        EvalException: EvalException,
+        RangeException: RangeException,
+        ReferenceException: ReferenceException,
+        SyntaxException: SyntaxException,
+        TypeException: TypeException,
+        URIException: URIException,
         createCustomException: createCustomException,
         handler: handler,
     };
