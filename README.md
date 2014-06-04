@@ -275,7 +275,7 @@ _return_
 
 | Type | Description |
 | ---- | ----------- |
-| {object} | Custom exception.  The type will be the function you provided in the config.exception property. |
+| object | Custom exception.  The type will be the function you provided in the config.exception property. |
 
 
 ```javascript
@@ -289,3 +289,245 @@ var ArgumentException = createCustomException({
     baseException: Exception
 });
 ```
+
+##handler
+The handler is responsible for handling errors thrown that hit window.onerror and specifying global configurations including the stacktrace.js url, html2canvas.js url, post url (to make a post request when an error is reported), post headers, callback (function executed when an error is reported).
+
+##### static properties
+###### scopeObject
+Scope options for the handler.  Options are none, exceptions, and all.  Setting the scope to none signals that the handler won't handle anything in window.onerror.  Setting the scope to exceptions signals that the handler will handle only thrown Exceptions, nothing else that is thrown.  Setting the scope to all signals that the handler will handle everything in window.onerror.
+
+##### static functions
+###### scope
+Get or set the scope of the handler when executed in window.onerror.  Scope refers to handler.scopeObject which has three options: none, exceptions, and all.  Setting the scope to none signals that the handler won't handle anything in window.onerror.  Setting the scope to exceptions signals that the handler will handle only thrown Exceptions, nothing else that is thrown.  Setting the scope to all signals that the handler will handle everything in window.onerror.
+
+_parameters_
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| scope | int | no | Set the handler scope if specified.  Use window.handler.scopeOption. |
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| handler|scopeOption | The handler if scope is defined, value of the handler scope is not defined. |
+
+
+```javascript
+handler.scope(handler.scopeOption.all)
+```
+
+###### guard
+Get or set a guard that will be used to restrict Exception options.
+_parameters_
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| guardFunc | function | no | Function that receives one parameter: Guard and should return the received Guard. |
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| handler|Guard | The handler if guardFunc is defined.  Handler's guard if guardFunc is not defined. |
+
+
+```javascript
+handler.guard(function (g) {
+    return g.restrictByExceptionsCount(10, 2)
+            .restrictBy(function (o, exception) {
+                if ( exception instanceof exceptions.SyntaxException) {
+                    o.stacktrace(false);
+                }
+                return o;
+            });
+});
+```
+
+###### html2canvasUrl
+Get or set url that pulls html2canvas.js.
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| html2canvasUrl | string | no | url to html2canvas.js |
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| handler|string | Handler if html2canvasUrl is defined.  Url to html2canvas.js if the html2canvasUrl is not defined. |
+
+
+###### stacktraceUrl
+Get or set url that pulls html2canvas.js.
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| stacktraceUrl | string | no | url to stacktrace.js |
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| handler|string | Handler if stacktraceUrl is defined.  Url to stacktrace.js if stacktraceUrl is not defined. |
+
+###### postUrl
+Get or set url used to post the serialized exception when reported.
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| postUrl | string | no | post request url |
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| handler|string | Handler if postUrl is defined.  Url for post request if postUrl is not defined. |
+
+###### postHeaders
+Get or set HTTP headers used to post the serialized exception when reported.
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| postHeaders | array | no | Array of objects with the form { bstrHeader: "header", bstrValue: "value" } |
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| handler|string | Handler if postHeaders is defined.  Post headers for post request if postHeaders is not defined. |
+
+###### callback
+Get or set callback that will be executed when an Exception is reported.
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| callback | function | no | callback that will be executed when the Exception is reported. |
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| handler|function | Handler if callback is defined.  Callback if callback is not defined. |
+
+
+###### loadStacktraceJs
+Asynchronously load stacktrace.js
+
+###### loadHtml2Canvas
+Asynchronously load html2cavas.js and execute the callback when the script is loaded.
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| callback | function | no | callback that will be executed when html2canvas.js has loaded|
+
+###### reportedExceptions
+Get all reported exceptions.  This includes all exeptions reported with report() and all errors handled by exeptions.handler in window.onerror.
+
+###### retrieveReportedExceptionsCount
+Helper function to get the count of reported exceptions (see handler.reportedExceptions) within the past x number of seconds.
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| seconds | int | no | Last number of seconds for which we care to count exceptions.  If not specified, we'll use the total number of exceptions reported since the exception handler was setup.|
+
+##Options
+Options for an exception.  Options include retrieving a stacktrace, printing a screenshot, posting a serialized JSON representation of an exception to a specified url when the exception is reported, and/or excecuting a callback that recieves the exception when the exception is reported.  exceptions.js does not expose a way to create an Options object.  Instead, it passes an Options object to a few functions which are expected to manipulate and return the object.  Functions that receive an Options object are optionsFunc, defaultOptionsFunc, and restrictFunc.
+
+##### methods
+
+###### stacktrace
+Get or set the retrieve stacktrace option.
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| enable | bool | no | Return the current option if undefined.  Enable the stacktrace option if enable is true.  Disable the stacktrace option if enable is false. |
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| Options|bool | Options object if enable is defined, value of the stacktrace option if enable is not defined. |
+
+###### screenshot
+Get or set the retrieve screenshot option.
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| enable | bool | no | Return the current option if undefined.  Enable the screenshot option if enable is true.  Disable the screenshot option if enable is false. |
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| Options|bool | Options object if enable is defined, value of the screenshot option if enable is not defined. |
+
+###### post
+Get or set the retrieve post option.
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| enable | bool | no | Return the current option if undefined.  Enable the post option if enable is true.  Disable the post option if enable is false. |
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| Options|bool | Options object if enable is defined, value of the post option if enable is not defined. |
+
+###### callback
+Get or set the retrieve callback option.
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| enable | bool | no | Return the current option if undefined.  Enable the callback option if enable is true.  Disable the callback option if enable is false. |
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| Options|bool | Options object if enable is defined, value of the callback option if enable is not defined. |
+
+###### toggleAll
+Toggle all options according to the enable parameter
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| enable | bool | no | Enable all options if true.  Disable all options if false or undefined. |
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| Options | Options object |
+
+##Guard
+Performing exception operations can be expensive or superfluous sometimes.  For example, you may not want to take a screenshot of your page if you've hit 10 errors in a row because it could cause noticable performance errors. Specify a guard with exceptions.handler.guard() to disable exception options you do not wish to perform. The guard restricts options for all reported exceptions.  exceptions.js does not expose a way to create a Guard object.  Instead, it passes a Guard object to the guardFunc specified in handler.guard.  The guardFunc is expected to manipulate and return the Guard.
+
+###### restrictByExceptionsCount
+Disable Exception options if the exception reported count threshold has been exceeded.  See handler.reportedExceptions for more information about how we defined a reported exception. 
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| count | int | yes | Threshold that must not be exceed lest you'll disable Exception options. |
+| seconds | int | no | Last number of seconds for which we care to count exceptions.  If not specified, we'll use the total number of exceptions reported since the exception handler was setup. |
+| optionsFunc | function | no | function that enables/disables and returns the options if the exception threshold has been exceeded.  If not specified, we'll disable all options for the Exception.  You'll likely only want to disable options in this function. |
+
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| Guard | The guard |
+
+###### restrictBy
+Disable Exception options with a specified restriction function.  Note: see window.handler.retrieveReportedExceptionsCount and window.handler.reportedExceptions for a convient utilities.
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| restrictFunc | function | yes | Function that disables Exception options and returns the options object.  The function will receive two parameters: the current options for the Exception and the Exception itself.  It should return the provided options object. |
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| Guard | The guard |
