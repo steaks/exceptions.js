@@ -8,6 +8,7 @@ module.exports = {
     setUp: function (callback) {
         window.exceptionReported = undefined;
         window.exceptions.handler
+            .scope(window.exceptions.handler.scopeOption.all)
             .callback(function (exception) {
                 exception.callbackExecuted = true;
                 window.exceptionReported = exception;
@@ -25,6 +26,7 @@ module.exports = {
         var exception = new window.exceptions.Exception("foo", {
             name: "bar"
         });
+        exception.report();
         test.equals(exception.name(), "bar");
         test.done();
     },
@@ -32,6 +34,7 @@ module.exports = {
         var exception = new window.exceptions.Exception("foo", {
             name: "bar"
         });
+        exception.report();
         test.equals(exception.name(), "bar");
         test.done();
     },
@@ -41,7 +44,18 @@ module.exports = {
                 foo: "bar"
             }
         });
+        exception.report();
         test.equals(exception.data().foo, "bar");
+        test.done();
+    },
+    //Inner exception
+    testInnerException: function (test) {
+        var exception = new window.exceptions.Exception("foo", {
+            innerException: new window.exceptions.ArgumentException("bar")
+        });
+        exception.report();
+        test.equals(exception.message(), "foo");
+        test.equals(exception.innerException().message(), "bar");
         test.done();
     },
     //Options and guards
@@ -60,6 +74,7 @@ module.exports = {
                 return o.toggleAll(false);
             }
         });
+        exception.report();
         test.equals(exception.options().stacktrace(), false);
         test.equals(exception.options().screenshot(), false);
         test.equals(exception.options().post(), false);
@@ -68,6 +83,7 @@ module.exports = {
     },
     testDefaultGuard: function (test) {
         var exception = new window.exceptions.Exception("foo");
+        exception.report();
         //we default to enable stacktrace and callback because we
         //have an Error.stack and a specified callback.
         //But we haven't specified a html2canvas url, post url.
@@ -81,7 +97,7 @@ module.exports = {
     testReportIfTrueWithOutMessage: function (test) {
         window.exceptions.Exception.reportIf(true);
         test.equals(window.exceptionReported.callbackExecuted, true);
-        test.equals(window.exceptionReported.message(), "Reported exception: Exception");
+        test.equals(window.exceptionReported.message(), "Condition evaluated to truthy");
         test.done();
     },
     testReportIfTrueWithMessage: function (test) {
@@ -257,6 +273,24 @@ module.exports = {
         test.equals(window.exceptionReported.name(), "URIException");
         test.ok(window.exceptionReported instanceof window.exceptions.Exception);
         test.ok(window.exceptionReported.error() instanceof URIError);
+        test.done();
+    },
+    testHandleURIError: function (test) {
+        window.exceptions.handler._handle("foo", "url", 1, 1, new URIError());
+        test.equals(window.exceptionReported.name(), "URIException");
+        test.ok(window.exceptionReported instanceof window.exceptions.Exception);
+        test.ok(window.exceptionReported.error() instanceof URIError);
+        test.done();
+    },
+    testScope: function (test) {
+        var exception = new window.exceptions.Exception("foo");
+        window.exceptions.handler.scope(window.exceptions.handler.scopeOption.exceptions);
+
+        window.exceptions.handler._handle("foo", "url", 1, 1, new Error("foo"));
+        test.equals(window.exceptionReported, undefined);
+
+        window.exceptions.handler._handle("foo", "url", 1, 1, exception);
+        test.equals(window.exceptionReported, exception);
         test.done();
     }
 };

@@ -14,7 +14,7 @@
         handler, 
         exceptions, 
         utilities, 
-        _handlerScope;
+        _scopeOption;
     
     utilities = {
          /**
@@ -96,7 +96,7 @@
     Options.prototype = {
         /**
          * Get or set the retrieve stacktrace option.
-         * @param {bool} return the current option if undefined.  Enable the stacktrace option
+         * @param {bool} Return the current option if undefined.  Enable the stacktrace option
          *        if enable is true.  Disable the stacktrace option if enable is false.
          * @return Options object if enable is defined, value of the stacktrace option if 
          *         enable is not defined.
@@ -110,7 +110,7 @@
         },
         /**
          * Get or set the take screenshot option.
-         * @param {bool} return the current option if undefined.  Enable the screenshot option
+         * @param {bool} Return the current option if undefined.  Enable the screenshot option
          *        if enable is true.  Disable the screenshot option if enable is false.
          * @return Options object if enable is defined, value of the screenshot option if 
          *         enable is not defined.
@@ -124,7 +124,7 @@
         },
         /**
          * Get or set the retrieve stacktrace option.
-         * @param {bool} return the current option if undefined.  Enable the stacktrace option
+         * @param {bool} Return the current option if undefined.  Enable the stacktrace option
          *        if enable is true.  Disable the stacktrace option if enable is false.
          * @return Options object if enable is defined, value of the stacktrace option if 
          *         enable is not defined.
@@ -138,7 +138,7 @@
         },
         /**
          * Get or set the execute handler callback option.
-         * @param {bool} return the current option if undefined.  Enable the callback option
+         * @param {bool} Return the current option if undefined.  Enable the callback option
          *        if enable is true.  Disable the callback option if enable is false.
          * @return Options object if enable is defined, value of the callback option if 
          *         enable is not defined.
@@ -152,7 +152,7 @@
         },
         /**
          * Toggle all options according to the enable parameter
-         * @param {bool} enable all options if true.  Disable all options if false.
+         * @param {bool} Enable all options if true.  Disable all options if false or undefined.
          * @return Options object
          */
         toggleAll: function (enable) {
@@ -173,9 +173,12 @@
      *        defaultOptionsFunc - {function} Provide a function that takes in an Options object 
      *                               and returns that Options object with enabled or disabled options.  
      *                               You'll usually want to enable all options by default. 
-     * @return Custom exception.  The type will be what you provided in the config.exception property.
+     * @return Custom exception.  The type will be the function you provided in the config.exception property.
      */
     function createCustomException(config) {
+        if (ArgumentException) {
+            ArgumentException.throwIf(!utilities.functionName(config.exception), "Your exception constructor must have a name.  See examples on github.")
+        }
         createCustomException._mixStaticFunctions(config.exception);
         createCustomException._inherits(
             config.exception, 
@@ -193,12 +196,11 @@
                 * @function throwIf
                 * @param {bool} throw the exception if true
                 * @param {string} optional - create an exception with the 
-                *           message if provided.  Else fallback to the default
-                *           type of the exception.
+                *        message if provided.  Else fallback to a generic message.
                 */
         return function throwIf(condition, message) {
             if (condition) {
-                var except = new exception(message || "Thrown exception: " + utilities.functionName(exception));
+                var except = new exception(message || "Condition evaluated to truthy");
                 throw except;
             }
         };
@@ -210,12 +212,11 @@
                  * @function reportIf
                  * @param {bool} report the exception if true
                  * @param {string} optional - create an exception with the 
-                 *           message if provided.  Else fallback to the default
-                 *           type of the exception.
+                 *        message if provided.  Else fallback to a generic message.
                  */
         return function reportIf(condition, message) {
             if (condition) {
-                var except = new exception(message || "Reported exception: " + utilities.functionName(exception));
+                var except = new exception(message || "Condition evaluated to truthy");
                 except.report();
             }
         };
@@ -265,9 +266,9 @@
      * @param {Object} optional - Configure the exception with a config object.  All properties 
      *           on the config are optional.
      *        name - {string} provide a name for the exception.  If no name is provided, we check if you
-     *                 manually set the name on the error created from this exception.  Otherwise, we fallback
-     *                 to the name of this exception's constructor.  Name is purely used for reporting purposes.  
-     *                 No functionality pivots off of type.  And the common case should be to not provide a name.
+     *               manually set the name on the error created from this exception.  Otherwise, we fallback
+     *               to the name of this exception's constructor.  Name is purely used for reporting purposes.  
+     *               No functionality pivots off of name.  And the common case should be to not provide a name.
      *        innerException - {Exception} Exceptions are recursive, so you can create an inner
      *                         exception that is wrapped by the current exception.
      *        data - {object} - Provide any information you want to associate with this Exception.
@@ -288,7 +289,7 @@
             }
             var defaultOptions = this.constructor.defaultOptionsFunc()(new Options());
             
-            this._error = (message instanceof Error) ? message : new Error(message || "");
+            this._error = (message instanceof Error) ? message : new Error(message);
             config = config || {};
             this._name = config.name || this._getName();
             this._stacktrace = null;
@@ -408,12 +409,13 @@
          * }
          */
         toSerializableObject: function () {
-            var simpleObject = {
+            var innerException = this.innerException(),
+            	simpleObject = {
                 name: this.name(),
                 message: this.message(),
                 stacktrace: this.stacktrace(),
                 data: this.data(),
-                innerException: this.innerException() ? this.innerException().toSimpleObject() : null,
+                innerException: innerException ? innerException.toSerializableObject() : null,
                 error: this.error()
             };
             return simpleObject;
@@ -678,9 +680,12 @@
     });
     
     /**
-     * Performing exception operations can be expensive or superfluous sometimes.  For example, you may not want to take
-     * a screenshot of your page if you've hit 10 errors in a row because it could cause noticable performance errors.
-     * Specify a guard with exceptions.handler.guard() to disable Exception options you do not wish to perform.
+     * Performing exception operations can be expensive or superfluous sometimes.  For example, you may 
+     * not want to take a screenshot of your page if you've hit 10 errors in a row because it could cause 
+     * noticable performance errors. Specify a guard with exceptions.handler.guard() to disable exception 
+     * options you do not wish to perform. The guard restricts options for all reported exceptions.  
+     * exceptions.js does not expose a way to create a Guard object.  Instead, it passes a Guard object to 
+     * the guardFunc specified in handler.guard.  The guardFunc is expected to manipulate and return the Guard.
      */
     function Guard() {
         if (!(this instanceof Guard)) {
@@ -749,7 +754,7 @@
         }
     };
     
-    _handlerScope = {
+    _scopeOption = {
         none: 0,
         exceptions: 1,
         all: 2
@@ -769,7 +774,7 @@
         _stacktraceUrl: null,
         _callback: null,
         _isSetup: false,
-        _scope: _handlerScope.all,
+        _scope: _scopeOption.all,
         _reportedExceptions: [],
         
         /**
@@ -778,15 +783,15 @@
          * will handle only thrown Exceptions, nothing else that is thrown.  Setting the scope to all signals that
          * the handler will handle everything in window.onerror.
          */
-        scopeObject: _handlerScope,
+        scopeOption: _scopeOption,
         
         /**
-         * Get or set the scope of the handler when executed in window.onerror.  Scope refers to handler.scopeObject
+         * Get or set the scope of the handler when executed in window.onerror.  Scope refers to scopeOption
          * which has three options: none, exceptions, and all.  Setting the scope to none signals that the handler
          * won't handle anything in window.onerror.  Setting the scope to exceptions signals that the handler
          * will handle only thrown Exceptions, nothing else that is thrown.  Setting the scope to all signals that
          * the handler will handle everything in window.onerror.
-         * @param {int} Set the handler scope if specified.  Use window.handler.scopeObject.
+         * @param {int} Set the handler scope if specified.  Use window.handler.scopeOption.
          * @return The handler if scope is defined, value of the handler scope is not defined.
          */
         scope: function (scope) {
@@ -899,6 +904,7 @@
         
         /**
          * Asynchronously load html2cavas.js and execute the callback when the script is loaded.
+         * @param {function} callback that will be executed when html2canvas.js has loaded
          */
         loadHtml2Canvas: function (callback) {
             utilities.scriptTag(exceptions.handler.html2canvasUrl(), function () {
@@ -918,7 +924,6 @@
         /**
          * Helper function to get the count of reported exceptions (see handler.reportedExceptions) within
          * the past x number of seconds.
-         * @method countNumErrorsWith
          * @param {int} - Last number of seconds for which we care to count exceptions.  If not
          *        specified, we'll use the total number of exceptions reported since the exception
          *        handler was setup.
@@ -952,12 +957,7 @@
                 if (typeof previousOnError === "function") {
                     previousOnError(errorMsg, url, lineNumber, columnNumber, errorObj);
                 }
-                if (handler.scope() === handler.scopeObject.all) {
-                    handler._handle(errorMsg, url, lineNumber, columnNumber, errorObj);
-                }
-                else if (handler.scope() === handler.scopeObject.exceptions && errorObj instanceof Exception) {
-                    handler._handle(errorMsg, url, lineNumber, columnNumber, errorObj);
-                }
+                handler._handle(errorMsg, url, lineNumber, columnNumber, errorObj);
             };
             handler._isSetup = true;
         },
@@ -969,8 +969,22 @@
         },
         
         _handle: function (errorMsg, url, lineNumber, columnNumber, errorObj) {
-            var data, exception, 
-                optionsFunc = function (o) { return o.stacktrace(false); };
+            var data, exception, optionsFunc, scope = handler.scope();
+            
+            if (scope === handler.scopeOption.none) {
+                return;
+            }
+            else if (scope === handler.scopeOption.exceptions) {
+            	if (!(errorObj instanceof Exception)) {
+            		return;	
+            	}
+            }
+            else if (scope !== handler.scopeOption.all) {
+            	console.log("Error in exceptions.js!");
+                console.log("handler.scope() returned " + scope + ".  It should have been handler.scopeOption.all, handler.scopeOption.exceptions, or handler.scopeOption.none");
+            }
+            
+            optionsFunc = function (o) { return o.stacktrace(false); };
                 
             if (errorObj instanceof Exception) {
                 exception = errorObj;

@@ -311,12 +311,12 @@ var FooArgumentException = createCustomException({
 The handler is responsible for handling errors thrown that hit window.onerror and specifying global configurations including the stacktrace.js url, html2canvas.js url, post url (to make a post request when an error is reported), post headers, callback (function executed when an error is reported).
 
 ##### static properties
-###### scopeObject
+###### scopeOption
 Scope options for the handler.  Options are none, exceptions, and all.  Setting the scope to none signals that the handler won't handle anything in window.onerror.  Setting the scope to exceptions signals that the handler will handle only thrown Exceptions, nothing else that is thrown.  Setting the scope to all signals that the handler will handle everything in window.onerror.
 
 ##### static functions
 ###### scope
-Get or set the scope of the handler when executed in window.onerror.  Scope refers to handler.scopeObject which has three options: none, exceptions, and all.  Setting the scope to none signals that the handler won't handle anything in window.onerror.  Setting the scope to exceptions signals that the handler will handle only thrown Exceptions, nothing else that is thrown.  Setting the scope to all signals that the handler will handle everything in window.onerror.
+Get or set the scope of the handler when executed in window.onerror.  Scope refers to handler.scopeOption which has three options: none, exceptions, and all.  Setting the scope to none signals that the handler won't handle anything in window.onerror.  Setting the scope to exceptions signals that the handler will handle only thrown Exceptions, nothing else that is thrown.  Setting the scope to all signals that the handler will handle everything in window.onerror.
 
 _parameters_
 
