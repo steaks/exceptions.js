@@ -522,6 +522,7 @@ _return_
 
 ###### restrictBy
 Disable Exception options with a specified restriction function.  Note: see window.handler.retrieveReportedExceptionsCount and window.handler.reportedExceptions for a convient utilities.
+
 | Parameter | Type | Required | Description |
 | --------- | ---- | -------- | ----------- |
 | restrictFunc | function | yes | Function that disables Exception options and returns the options object.  The function will receive two parameters: the current options for the Exception and the Exception itself.  It should return the provided options object. |
