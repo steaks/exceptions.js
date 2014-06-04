@@ -410,7 +410,7 @@
          */
         toSerializableObject: function () {
             var innerException = this.innerException(),
-            	simpleObject = {
+                simpleObject = {
                 name: this.name(),
                 message: this.message(),
                 stacktrace: this.stacktrace(),
@@ -975,12 +975,12 @@
                 return;
             }
             else if (scope === handler.scopeOption.exceptions) {
-            	if (!(errorObj instanceof Exception)) {
-            		return;	
-            	}
+                if (!(errorObj instanceof Exception)) {
+                    return;    
+                }
             }
             else if (scope !== handler.scopeOption.all) {
-            	console.log("Error in exceptions.js!");
+                console.log("Error in exceptions.js!");
                 console.log("handler.scope() returned " + scope + ".  It should have been handler.scopeOption.all, handler.scopeOption.exceptions, or handler.scopeOption.none");
             }
             
