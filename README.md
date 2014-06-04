@@ -289,6 +289,19 @@ var ArgumentException = createCustomException({
     baseException: Exception
 });
 ```
+```javascript
+var FooArgumentException = createCustomException({ 
+    exception: function FooArgumentException(message, config) {
+        if (!(this instanceof FooArgumentException)) {
+            return new FooArgumentException(message, config);
+        }
+        ArgumentException.call(this, message, config);
+    },
+    baseException: ArgumentException,
+    defaultOptionsFunc: function (o) { return o.toggleAll(true).callback(false); }
+});
+```
+
 
 ##handler
 The handler is responsible for handling errors thrown that hit window.onerror and specifying global configurations including the stacktrace.js url, html2canvas.js url, post url (to make a post request when an error is reported), post headers, callback (function executed when an error is reported).
@@ -506,7 +519,8 @@ _return_
 Performing exception operations can be expensive or superfluous sometimes.  For example, you may not want to take a screenshot of your page if you've hit 10 errors in a row because it could cause noticable performance errors. Specify a guard with exceptions.handler.guard() to disable exception options you do not wish to perform. The guard restricts options for all reported exceptions.  exceptions.js does not expose a way to create a Guard object.  Instead, it passes a Guard object to the guardFunc specified in handler.guard.  The guardFunc is expected to manipulate and return the Guard.
 
 ###### restrictByExceptionsCount
-Disable Exception options if the exception reported count threshold has been exceeded.  See handler.reportedExceptions for more information about how we defined a reported exception. 
+Disable Exception options if the exception reported count threshold has been exceeded.  See handler.reportedExceptions for more information about how we defined a reported exception.
+
 | Parameter | Type | Required | Description |
 | --------- | ---- | -------- | ----------- |
 | count | int | yes | Threshold that must not be exceed lest you'll disable Exception options. |
@@ -520,6 +534,12 @@ _return_
 | ---- | ----------- |
 | Guard | The guard |
 
+```javascript
+handler.guard(function (g) {
+    return g.restrictByExceptionsCount(10, 2, function (o) { return o.stacktrace(false); });
+});
+```
+
 ###### restrictBy
 Disable Exception options with a specified restriction function.  Note: see window.handler.retrieveReportedExceptionsCount and window.handler.reportedExceptions for a convient utilities.
 
@@ -532,3 +552,14 @@ _return_
 | Type | Description |
 | ---- | ----------- |
 | Guard | The guard |
+
+```javascript
+handler.guard(function (g) {
+    return g.restrictBy(function (o, exception) {
+                if ( exception instanceof exceptions.SyntaxException) {
+                    o.stacktrace(false);
+                }
+                return o;
+           });
+});
+```
