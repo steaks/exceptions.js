@@ -18,19 +18,23 @@ exeptions.handler
 ```
 		
 ```javascript
-//report an exception
+//Report an exception.
 var exception = new exceptions.Exception("Oh no!");
 exception.report();
 
-//throw an exception
+//Throw an exception.  The exceptions.handler will handle this thrown error when window.onerror is executed.
 throw new exceptions.Exception("Oh no!");
 
-//include extra data with the exception
+//Include extra data with the exception.
 throw new exceptions.Exception("Oh no!", {
     data: {
         foo: "bar"
     }
 });
+
+//The exceptions.handler will handle this thrown error when window.onerror is executed.  However, 
+//you may find it more useful to throw an Exception rather than any arbirary object :)
+throw "Oh no!";
 
 ```
 
