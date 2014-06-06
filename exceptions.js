@@ -285,7 +285,7 @@
     function Exception(message, config) {
         try {
             if (!(this instanceof Exception)) {
-                return new Exception(config);
+                return new Exception(message, config);
             }
             var defaultOptions = this.constructor.defaultOptionsFunc()(new Options());
             
@@ -431,7 +431,7 @@
         
         toString: function () {
             if (this.message()) {
-                return this.name() + ": " + this.message();
+                return this.name() + " - " + this.message();
             }
             return this.name();
         },
@@ -444,8 +444,10 @@
         
         _populateDefaultDataProperties: function () {
             var data = this.data();
-            data.browser = data.browser || utilities.getBrowser();
             this._mergeErrorIntoData();
+            data.browser = data.browser || utilities.getBrowser();
+            data.url = data.url || window.location.href;
+            data.date = data.date || Date();
         },
         
         _mergeErrorIntoData: function () {
@@ -486,7 +488,7 @@
                 this._callback();
             }
             handler._pushReportedException(this);
-            console.log(this.toString() + " reported");
+            console.log("exceptions.js: " + this.toString());
             console.log(this.toSerializableObject());
         },
         _retrieveStacktrace: function () {
