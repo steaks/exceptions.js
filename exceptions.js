@@ -196,7 +196,7 @@
      * @return Custom exception.  The type will be the function you provided in the config.exception property.
      */
     function createCustomException(config) {
-        if (ArgumentException) {
+        if (ArgumentException && ArgumentException.throwIf) {
             ArgumentException.throwIf(!utilities.functionName(config.exception), "Your exception constructor must have a name.  See examples on github.")
         }
         createCustomException._mixStaticFunctions(config.exception);
