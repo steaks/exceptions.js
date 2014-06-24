@@ -91,6 +91,7 @@
         this._screenshot = false;
         this._post = false;
         this._callback = false;
+        this._postToExceptionsJsServer = false
     }
     
     Options.prototype = {
@@ -124,9 +125,9 @@
         },
         /**
          * Get or set the retrieve stacktrace option.
-         * @param {bool} Return the current option if undefined.  Enable the stacktrace option
-         *        if enable is true.  Disable the stacktrace option if enable is false.
-         * @return Options object if enable is defined, value of the stacktrace option if 
+         * @param {bool} Return the current option if undefined.  Enable the post option
+         *        if enable is true.  Disable the post option if enable is false.
+         * @return Options object if enable is defined, value of the post option if 
          *         enable is not defined.
          */
         post: function (enable) {
@@ -151,6 +152,20 @@
             return this._callback;
         },
         /**
+         * Post to exceptions.js server
+         * @param {bool} Return the current option if undefined.  Enable the postToExceptionsJsServer option
+         *        if enable is true.  Disable the postToExceptionsJsServer option if enable is false.
+         * @return Options object if enable is defined, value of the postToExceptionsJsServer option if 
+         *         enable is not defined.
+         */
+        postToExceptionsJsServer: function (enable) {
+            if (enable !== undefined) {
+                this._postToExceptionsJsServer = Boolean(enable);
+                return this;
+            }
+            return this._postToExceptionsJsServer;
+        },        
+        /**
          * Toggle all options according to the enable parameter
          * @param {bool} Enable all options if true.  Disable all options if false or undefined.
          * @return Options object
@@ -159,7 +174,8 @@
             return this.stacktrace(enable)
                 .screenshot(enable)
                 .post(enable)
-                .callback(enable);
+                .callback(enable)
+                .postToExceptionsJsServer(enable);
         }
     };
     
@@ -484,6 +500,9 @@
             if (this._guardedOptions.post()) {
                 this._post();
             }
+            if (this._guardedOptions.postToExceptionsJsServer()) {
+                this._postToExceptionsJsServer();
+            }
             if (this._guardedOptions.callback()) {
                 this._callback();
             }
@@ -550,6 +569,21 @@
             //Send the proper header information along with the request
             http.setRequestHeader("Content-type", "application/x-www-form-urlencoded; charset=UTF-8");
             http.send("exception=" + encodeURIComponent(jsonString));
+        },
+        _postToExceptionsJsServer: function () {
+            var http = new window.XMLHttpRequest(), 
+                postHeaders = exceptions.handler.postHeaders(),
+                jsonString = this.toJSONString(),
+                clientId = handler.clientId(),
+                to = handler.to(),
+                i;
+            http.open("POST", "https://www.platform.exceptionsjs.com/v0.1/reportWithClientId/", true);
+            
+            //Send the proper header information along with the request
+            http.setRequestHeader("Content-type", "application/x-www-form-urlencoded; charset=UTF-8");
+            http.send("exception=" + encodeURIComponent(jsonString) + 
+            		  "&clientId=" + encodeURIComponent(clientId) +
+            		  "&to=" + encodeURIComponent(to));
         },
         _callback: function () {
             var callback = exceptions.handler.callback();
@@ -710,6 +744,9 @@
             if (!exceptions.handler.callback()){
                 o.callback(false);
             }
+            if (!exceptions.handler.clientId()) {
+            	o.postToExceptionsJsServer(false);
+            }
             return o;
         },
         /**
@@ -778,6 +815,9 @@
         _isSetup: false,
         _scope: _scopeOption.all,
         _reportedExceptions: [],
+        _clientId: null,
+        _to: null,
+        _postToExceptionsJsServer: false,
         
         /**
          * Scope options for the handler.  Options are none, exceptions, and all.  Setting the scope to none signals that the handler
@@ -880,6 +920,37 @@
             }
         },
         
+        postToExceptionsJsServer: function (enable, clientId, to) {
+        	if (enable !== undefined) {
+        		if (enable) {
+        			handler.clientId(clientId);	
+        		}
+        		if (to) {
+        			handler.to(to);
+        		}
+        		handler._postToExceptionsJsServer = enable;
+        		return handler;
+        	}
+        	return handler._postToExceptionsJsServer && handler.clientId();
+        	
+        },
+        
+        clientId: function (clientId) {
+        	if (clientId) {
+        		handler._clientId = clientId;
+        		return handler;
+        	}
+        	return handler._clientId;
+        },
+        
+        to: function (to) {
+        	if (to) {
+        		handler._to = to;
+        		return handler;
+        	}
+        	return handler._to;
+        },
+        
         /**
          * Get or set callback that will be executed when an Exception is reported.
          * @param {function} callback that will be executed when the Exception is reported.
@@ -949,8 +1020,16 @@
             }
             return i + 1;
         },
-
+        
         _setup: function () {
+        	handler
+        		._setupDefaultGuard()
+        		._setupOnError()
+        		.stacktraceUrl("http://cdnjs.cloudflare.com/ajax/libs/stacktrace.js/0.6.0/stacktrace.js")
+        		.html2canvasUrl("http://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.js")
+        },
+
+        _setupOnError: function () {
             if (handler._isSetup) {
                 return;
             }
@@ -962,12 +1041,15 @@
                 handler._handle(errorMsg, url, lineNumber, columnNumber, errorObj);
             };
             handler._isSetup = true;
+            return handler;
         },
         
         _setupDefaultGuard: function () {
             handler.guard(function (g) {
-                return g.restrictByExceptionsCount(10, 10);
+                return g.restrictByExceptionsCount(10, 10)
+                		.restrictByExceptionsCount(20);
             });
+            return handler;
         },
         
         _handle: function (errorMsg, url, lineNumber, columnNumber, errorObj) {
@@ -1062,7 +1144,6 @@
         }
     };
         
-    handler._setupDefaultGuard();
     handler._setup();
     
     exceptions = {
