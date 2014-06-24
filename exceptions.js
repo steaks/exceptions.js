@@ -15,6 +15,26 @@
         exceptions, 
         utilities, 
         _scopeOption;
+
+    //polyfill for Object.create so we can support inheritance in ie8
+    if (typeof Object.create != 'function') {
+        (function () {
+            var F = function () { };
+            Object.create = function (o) {
+                if (arguments.length > 1) {
+                    throw Error('Second argument not supported');
+                }
+                if (o === null) {
+                    throw Error('Cannot set a null [[Prototype]]');
+                }
+                if (typeof o != 'object') {
+                    throw TypeError('Argument must be an object');
+                }
+                F.prototype = o;
+                return new F();
+            };
+        })();
+    }
     
     utilities = {
          /**
@@ -192,7 +212,7 @@
      * @return Custom exception.  The type will be the function you provided in the config.exception property.
      */
     function createCustomException(config) {
-        if (ArgumentException) {
+        if (ArgumentException && ArgumentException.throwIf) {
             ArgumentException.throwIf(!utilities.functionName(config.exception), "Your exception constructor must have a name.  See examples on github.")
         }
         createCustomException._mixStaticFunctions(config.exception);
@@ -735,7 +755,7 @@
             if (!exception.error().stack && !exceptions.handler.stacktraceUrl()){
                 o.stacktrace(false);
             }
-            if (!exceptions.handler.html2canvasUrl()){
+            if (!exceptions.handler.html2canvasUrl() || !window.getComputedStyle){
                 o.screenshot(false);
             }
             if (!exceptions.handler.postUrl()){
@@ -1158,7 +1178,7 @@
         TypeException: TypeException,
         URIException: URIException,
         createCustomException: createCustomException,
-        handler: handler,
+        handler: handler
     };
     
     window.exceptions = exceptions;

@@ -11,7 +11,7 @@ Basic setup and usage
 
 //Setup the exceptions handler to report errors when 
 //you call Exception.report() or window.onerror executes
-exeptions.handler
+exceptions.handler
     .stacktraceUrl("http://cdnjs.cloudflare.com/ajax/libs/stacktrace.js/0.6.0/stacktrace.js")
     .html2canvasUrl("http://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.js")
     .postUrl("http://localhost/handleException")
