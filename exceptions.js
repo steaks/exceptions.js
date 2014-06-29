@@ -172,18 +172,18 @@
             return this._callback;
         },
         /**
-         * Post to exceptions.js server
-         * @param {bool} Return the current option if undefined.  Enable the postToExceptionsJsServer option
-         *        if enable is true.  Disable the postToExceptionsJsServer option if enable is false.
-         * @return Options object if enable is defined, value of the postToExceptionsJsServer option if 
+         * Post to exceptions.js platform
+         * @param {bool} Return the current option if undefined.  Enable the postToExceptionsJsPlatform option
+         *        if enable is true.  Disable the postToExceptionsJsPlatform option if enable is false.
+         * @return Options object if enable is defined, value of the postToExceptionsJsPlatform option if 
          *         enable is not defined.
          */
-        postToExceptionsJsServer: function (enable) {
+        postToExceptionsJsPlatform: function (enable) {
             if (enable !== undefined) {
-                this._postToExceptionsJsServer = Boolean(enable);
+                this._postToExceptionsJsPlatform = Boolean(enable);
                 return this;
             }
-            return this._postToExceptionsJsServer;
+            return this._postToExceptionsJsPlatform;
         },        
         /**
          * Toggle all options according to the enable parameter
@@ -195,7 +195,7 @@
                 .screenshot(enable)
                 .post(enable)
                 .callback(enable)
-                .postToExceptionsJsServer(enable);
+                .postToExceptionsJsPlatform(enable);
         }
     };
     
@@ -226,7 +226,7 @@
         return config.exception;
     }
     
-    createCustomException._createThrowIf = function (exception) {
+    createCustomException._createThrowIf = function (Exception) {
                /**
                 * Throw an exception if the condition is true.
                 * @function throwIf
@@ -236,13 +236,13 @@
                 */
         return function throwIf(condition, message) {
             if (condition) {
-                var except = new exception(message || "Condition evaluated to truthy");
+                var except = new Exception(message || "Condition evaluated to truthy");
                 throw except;
             }
         };
     };
     
-    createCustomException._createReportIf = function (exception) {
+    createCustomException._createReportIf = function (Exception) {
                 /**
                  * Report an exception if the condition is true.
                  * @function reportIf
@@ -252,7 +252,7 @@
                  */
         return function reportIf(condition, message) {
             if (condition) {
-                var except = new exception(message || "Condition evaluated to truthy");
+                var except = new Exception(message || "Condition evaluated to truthy");
                 except.report();
             }
         };
@@ -520,14 +520,14 @@
             if (this._guardedOptions.post()) {
                 this._post();
             }
-            if (this._guardedOptions.postToExceptionsJsServer()) {
-                this._postToExceptionsJsServer();
+            if (this._guardedOptions.postToExceptionsJsPlatform()) {
+                this._postToExceptionsJsPlatform();
             }
             if (this._guardedOptions.callback()) {
                 this._callback();
             }
             handler._pushReportedException(this);
-            console.log("exceptions.js: " + this.toString());
+            console.log("exceptions.js exception: " + this.toString());
             console.log(this.toSerializableObject());
         },
         _retrieveStacktrace: function () {
@@ -590,7 +590,7 @@
             http.setRequestHeader("Content-type", "application/x-www-form-urlencoded; charset=UTF-8");
             http.send("exception=" + encodeURIComponent(jsonString));
         },
-        _postToExceptionsJsServer: function () {
+        _postToExceptionsJsPlatform: function () {
             var http = new window.XMLHttpRequest(), 
                 postHeaders = exceptions.handler.postHeaders(),
                 jsonString = this.toJSONString(),
@@ -602,8 +602,8 @@
             //Send the proper header information along with the request
             http.setRequestHeader("Content-type", "application/x-www-form-urlencoded; charset=UTF-8");
             http.send("exception=" + encodeURIComponent(jsonString) + 
-            		  "&clientId=" + encodeURIComponent(clientId) +
-            		  "&to=" + encodeURIComponent(to));
+                      "&clientId=" + encodeURIComponent(clientId) +
+                      "&to=" + encodeURIComponent(to));
         },
         _callback: function () {
             var callback = exceptions.handler.callback();
@@ -765,7 +765,7 @@
                 o.callback(false);
             }
             if (!exceptions.handler.clientId()) {
-            	o.postToExceptionsJsServer(false);
+                o.postToExceptionsJsPlatform(false);
             }
             return o;
         },
@@ -837,7 +837,6 @@
         _reportedExceptions: [],
         _clientId: null,
         _to: null,
-        _postToExceptionsJsServer: false,
         
         /**
          * Scope options for the handler.  Options are none, exceptions, and all.  Setting the scope to none signals that the handler
@@ -940,35 +939,45 @@
             }
         },
         
-        postToExceptionsJsServer: function (enable, clientId, to) {
-        	if (enable !== undefined) {
-        		if (enable) {
-        			handler.clientId(clientId);	
-        		}
-        		if (to) {
-        			handler.to(to);
-        		}
-        		handler._postToExceptionsJsServer = enable;
-        		return handler;
-        	}
-        	return handler._postToExceptionsJsServer && handler.clientId();
-        	
+        /**
+         * Enable posting to exceptionsjs platform.  The exceptionsjs platform handles 
+         * your Javascript error by parsing the serialized exception and constructing a
+         * useful exception email that includes stacktraces, screenshots, and extra information.
+         * Register for exceptionsjs platform at https://exceptionsjs.com.  This option only works
+         * if you've enabled the option to allow unsecure reporting.  If you have enabled secure
+         * reporting you must send your exceptions to excpetionsjs platform using the full oauth2
+         * process.  See https://exceptionsjs.com for useful libraries in many languages that make
+         * submitting exceptions with the full oauth2 process easy.
+         * @param {string} clientId that will be used with exceptionsjs platform
+         * @param {string} post request url
+         * @return Handler if postUrl is defined.  Url for post request if postUrl is not defined.
+         */
+        postToExceptionsJsPlatform: function (clientId, to) {
+            if (clientId !== undefined) {
+                handler.clientId(clientId);    
+                if (to) {
+                    handler.to(to);
+                }
+                return handler;
+            }
+            return handler.clientId();
+            
         },
         
         clientId: function (clientId) {
-        	if (clientId) {
-        		handler._clientId = clientId;
-        		return handler;
-        	}
-        	return handler._clientId;
+            if (clientId) {
+                handler._clientId = clientId;
+                return handler;
+            }
+            return handler._clientId;
         },
         
         to: function (to) {
-        	if (to) {
-        		handler._to = to;
-        		return handler;
-        	}
-        	return handler._to;
+            if (to) {
+                handler._to = to;
+                return handler;
+            }
+            return handler._to;
         },
         
         /**
@@ -1042,11 +1051,11 @@
         },
         
         _setup: function () {
-        	handler
-        		._setupDefaultGuard()
-        		._setupOnError()
-        		.stacktraceUrl("http://cdnjs.cloudflare.com/ajax/libs/stacktrace.js/0.6.0/stacktrace.js")
-        		.html2canvasUrl("http://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.js")
+            handler
+                ._setupDefaultGuard()
+                ._setupOnError()
+                .stacktraceUrl("http://cdnjs.cloudflare.com/ajax/libs/stacktrace.js/0.6.0/stacktrace.js")
+                .html2canvasUrl("http://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.js");
         },
 
         _setupOnError: function () {
@@ -1067,7 +1076,7 @@
         _setupDefaultGuard: function () {
             handler.guard(function (g) {
                 return g.restrictByExceptionsCount(10, 10)
-                		.restrictByExceptionsCount(20);
+                        .restrictByExceptionsCount(20);
             });
             return handler;
         },
