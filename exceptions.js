@@ -99,7 +99,7 @@
     /**
      * Options for an exception.  Options include retrieving a stacktrace, printing a screenshot,
      * posting a serialized JSON representation of an exception to a specified url when the
-     * exception is reported, and/or excecuting a callback that recieves the exception when
+     * exception is reported, and/or excecuting a reportCallback that recieves the exception when
      * the exception is reported.
      * @constructor
      */
@@ -109,9 +109,10 @@
         }
         this._stacktrace = false;
         this._screenshot = false;
-        this._post = false;
-        this._callback = false;
-        this._postToExceptionsJsServer = false
+        this._reportPost = false;
+        this._reportCallback = false;
+        this._reportToExceptionsJsServer = false;
+        this._DOMDump = false;
     }
     
     Options.prototype = {
@@ -150,41 +151,49 @@
          * @return Options object if enable is defined, value of the post option if 
          *         enable is not defined.
          */
-        post: function (enable) {
+        reportPost: function (enable) {
             if (enable !== undefined) {
-                this._post = Boolean(enable);
+                this._reportPost = Boolean(enable);
                 return this;
             }
-            return this._post;
+            return this._reportPost;
         },
         /**
-         * Get or set the execute handler callback option.
-         * @param {bool} Return the current option if undefined.  Enable the callback option
-         *        if enable is true.  Disable the callback option if enable is false.
-         * @return Options object if enable is defined, value of the callback option if 
+         * Get or set the execute handler reportCallback option.
+         * @param {bool} Return the current option if undefined.  Enable the reportCallback option
+         *        if enable is true.  Disable the reportCallback option if enable is false.
+         * @return Options object if enable is defined, value of the reportCallback option if 
          *         enable is not defined.
          */
-        callback: function (enable) {
+        reportCallback: function (enable) {
             if (enable !== undefined) {
-                this._callback = Boolean(enable);
+                this._reportCallback = Boolean(enable);
                 return this;
             }
-            return this._callback;
+            return this._reportCallback;
         },
         /**
          * Post to exceptions.js platform
-         * @param {bool} Return the current option if undefined.  Enable the postToExceptionsJsPlatform option
-         *        if enable is true.  Disable the postToExceptionsJsPlatform option if enable is false.
-         * @return Options object if enable is defined, value of the postToExceptionsJsPlatform option if 
+         * @param {bool} Return the current option if undefined.  Enable the reportToExceptionsJsPlatform option
+         *        if enable is true.  Disable the reportToExceptionsJsPlatform option if enable is false.
+         * @return Options object if enable is defined, value of the reportToExceptionsJsPlatform option if 
          *         enable is not defined.
          */
-        postToExceptionsJsPlatform: function (enable) {
+        reportToExceptionsJsPlatform: function (enable) {
             if (enable !== undefined) {
-                this._postToExceptionsJsPlatform = Boolean(enable);
+                this._reportToExceptionsJsPlatform = Boolean(enable);
                 return this;
             }
-            return this._postToExceptionsJsPlatform;
-        },        
+            return this._reportToExceptionsJsPlatform;
+        },
+        
+        domDump: function (enable) {
+        	if (enable !== undefined) {
+                this._DOMDump = Boolean(enable);
+                return this;
+            }
+            return this._DOMDump;
+        },
         /**
          * Toggle all options according to the enable parameter
          * @param {bool} Enable all options if true.  Disable all options if false or undefined.
@@ -193,9 +202,10 @@
         toggleAll: function (enable) {
             return this.stacktrace(enable)
                 .screenshot(enable)
-                .post(enable)
-                .callback(enable)
-                .postToExceptionsJsPlatform(enable);
+                .reportPost(enable)
+                .reportCallback(enable)
+                .reportToExceptionsJsPlatform(enable)
+                .domDump(enable);
         }
     };
     
@@ -343,6 +353,9 @@
             if (this._guardedOptions.screenshot()) {
                 this._takeScreenshot();
             }
+            if (this._guardedOptions.domDump()) {
+            	this._getDOMDump();
+            }
         }
         catch (e) {
             this._screenshotComplete = true;
@@ -410,11 +423,11 @@
         /**
          * Report the exception (without throwing it).  Reporting an exception involves
          * making a post request with a serialized exception object if the post option is
-         * enabled and/or executing a callback if the callback option is enabled.  The post
+         * enabled and/or executing a custom report function if the reportCallback option is enabled.  The post
          * request uses the url returned from exception.handler.postUrl() and headers returned
          * from exception.handler.postHeaders().  It will not make a post request if no url
-         * is specified.  The callback will execute the function returned from 
-         * exceptions.handlers.callback and will not execute the callback if no function is 
+         * is specified.  The custom report function will execute the function returned from 
+         * exceptions.handlers.reportCallback and will not execute the reportCallback if no function is 
          * specified.
          *
          *
@@ -422,9 +435,17 @@
         report: function () {
             try {
                 if (!this._screenshotComplete && this._guardedOptions.screenshot()) {
-                    this._listeners.push(this._report);
+                    this._listeners.push(function () {
+                    	if (exceptions.handler.beforeReport()) {
+                    		exceptions.handler.beforeReport()(this);
+                    	}
+                    	this._report();
+                    });
                 }
                 else {
+                	if (exceptions.handler.beforeReport()) {
+                		exceptions.handler.beforeReport()(this);
+                	}
                     this._report();
                 }
             }
@@ -516,15 +537,15 @@
             //because we consider them to be first order properties on an exception which don't 
             //need to live in the data object.
         },        
-        _report: function () {
-            if (this._guardedOptions.post()) {
-                this._post();
+        _report: function () {      	
+            if (this._guardedOptions.reportPost()) {
+                this._reportPost();
             }
-            if (this._guardedOptions.postToExceptionsJsPlatform()) {
-                this._postToExceptionsJsPlatform();
+            if (this._guardedOptions.reportToExceptionsJsPlatform()) {
+                this._reportToExceptionsJsPlatform();
             }
-            if (this._guardedOptions.callback()) {
-                this._callback();
+            if (this._guardedOptions.reportCallback()) {
+                this._reportCallback();
             }
             handler._pushReportedException(this);
             console.log("exceptions.js exception: " + this.toString());
@@ -575,29 +596,30 @@
                 });
             }
         },
-        _post: function () {
+        _reportPost: function () {
             var http = new window.XMLHttpRequest(), 
-                postHeaders = exceptions.handler.postHeaders(),
                 jsonString = this.toJSONString(),
+                reportPost = exceptions.handler.reportPost(),
+                postHeaders = reportPost.headers,
                 i;
-            http.open("POST", exceptions.handler.postUrl(), true);
+            http.open("POST", reportPost.url, true);
             if (postHeaders) {
                 for (i = 0; i < postHeaders.length; i += 1) {
-                    http.setRequestHeader(postHeaders[i].bstrHeader, postHeaders[i].bstrValue);
+                    http.setRequestHeader(postHeaders[i].header, postHeaders[i].value);
                 }
             }
             //Send the proper header information along with the request
             http.setRequestHeader("Content-type", "application/x-www-form-urlencoded; charset=UTF-8");
             http.send("exception=" + encodeURIComponent(jsonString));
         },
-        _postToExceptionsJsPlatform: function () {
+        _reportToExceptionsJsPlatform: function () {
             var http = new window.XMLHttpRequest(), 
-                postHeaders = exceptions.handler.postHeaders(),
                 jsonString = this.toJSONString(),
                 clientId = handler.clientId(),
                 to = handler.to(),
                 i;
             http.open("POST", "https://www.platform.exceptionsjs.com/v0.1/reportWithClientId/", true);
+            http.open("POST", "/v0.1/reportWithClientId/", true);
             
             //Send the proper header information along with the request
             http.setRequestHeader("Content-type", "application/x-www-form-urlencoded; charset=UTF-8");
@@ -605,9 +627,13 @@
                       "&clientId=" + encodeURIComponent(clientId) +
                       "&to=" + encodeURIComponent(to));
         },
-        _callback: function () {
-            var callback = exceptions.handler.callback();
-            callback(this);
+        _reportCallback: function () {
+            var reportCallback = exceptions.handler.reportCallback();
+            reportCallback(this);
+        },
+        _getDOMDump: function ()  {
+        	var htmlNode = document.getElementsByTagName("html")[0];
+        	this.data().DOMDump = "<html>" + htmlNode.innerHTML + "</html>";
         },
         constructor: Exception
     };
@@ -758,14 +784,14 @@
             if (!exceptions.handler.html2canvasUrl() || !window.getComputedStyle){
                 o.screenshot(false);
             }
-            if (!exceptions.handler.postUrl()){
-                o.post(false);
+            if (!exceptions.handler.reportPost().url){
+                o.reportPost(false);
             }
-            if (!exceptions.handler.callback()){
-                o.callback(false);
+            if (!exceptions.handler.reportCallback()){
+                o.reportCallback(false);
             }
             if (!exceptions.handler.clientId()) {
-                o.postToExceptionsJsPlatform(false);
+                o.reportToExceptionsJsPlatform(false);
             }
             return o;
         },
@@ -822,16 +848,15 @@
     /**
      * Handler as exposed by exceptions.handler.  The handler is responsible for handling errors thrown that
      * hit window.onerror and specifying global configurations including the stacktrace.js url, html2canvas.js url,
-     * post url (to make a post request when an error is reported), post headers, callback (function executed when
+     * post url (to make a post request when an error is reported), post headers, custom report func (function executed when
      * an error is reported).
      */
     handler = {
         _guard: null,
-        _postUrl: null,
-        _postHeaders: null,
+        _reportPost: { url: null, headers: null },
         _html2canvasUrl: null,
         _stacktraceUrl: null,
-        _callback: null,
+        _reportCallback: null,
         _isSetup: false,
         _scope: _scopeOption.all,
         _reportedExceptions: [],
@@ -885,13 +910,11 @@
          * @return Handler if html2canvasUrl is defined.  Url to html2canvas.js if the html2canvasUrl is not defined.
          */
         html2canvasUrl: function (html2canvasUrl) {
-            if (html2canvasUrl) {
+            if (html2canvasUrl !== undefined) {
                 handler._html2canvasUrl = html2canvasUrl;
                 return handler;
             }
-            else {
-                return handler._html2canvasUrl;
-            }
+            return handler._html2canvasUrl;
         },
         
         /**
@@ -900,28 +923,19 @@
          * @return Handler if stacktraceUrl is defined.  Url to stacktrace.js if stacktraceUrl is not defined.
          */
         stacktraceUrl: function (stacktraceUrl) {
-            if (stacktraceUrl) {
+            if (stacktraceUrl !== undefined) {
                 handler._stacktraceUrl = stacktraceUrl;
                 return handler;
             }
-            else {
-                return handler._stacktraceUrl;
-            }
+            return handler._stacktraceUrl;
         },
         
-        /**
-         * Get or set url used to post the serialized exception when reported.
-         * @param {string} post request url
-         * @return Handler if postUrl is defined.  Url for post request if postUrl is not defined.
-         */
-        postUrl: function (postUrl) {
-            if (postUrl) {
-                handler._postUrl = postUrl;
+        beforeReport: function (func) {
+        	if (func !== undefined) {
+                handler._beforeReportFunc = func;
                 return handler;
             }
-            else {
-                return handler._postUrl;
-            }
+            return handler._beforeReportFunc;
         },
         
         /**
@@ -929,14 +943,12 @@
          * @param {array} Array of objects with the form { bstrHeader: "header", bstrValue: "value" }
          * @return Handler if postHeaders is defined.  Post headers for post request if postHeaders is not defined.
          */
-        postHeaders: function (postHeaders) {
-            if (postHeaders) {
-                handler._postHeaders = postHeaders;
-                return handler;
-            }
-            else {
-                return handler._postHeaders;
-            }
+        reportPost: function (url, headers) {
+        	if (url !== undefined) {
+        		handler._reportPost = { url: url, headers: headers || [] };
+        		return handler;
+        	}
+        	return handler._reportPost;
         },
         
         /**
@@ -952,7 +964,7 @@
          * @param {string} post request url
          * @return Handler if postUrl is defined.  Url for post request if postUrl is not defined.
          */
-        postToExceptionsJsPlatform: function (clientId, to) {
+        reportToExceptionsJsPlatform: function (clientId, to) {
             if (clientId !== undefined) {
                 handler.clientId(clientId);    
                 if (to) {
@@ -965,7 +977,7 @@
         },
         
         clientId: function (clientId) {
-            if (clientId) {
+            if (clientId !== undefined) {
                 handler._clientId = clientId;
                 return handler;
             }
@@ -973,7 +985,7 @@
         },
         
         to: function (to) {
-            if (to) {
+            if (to !== undefined) {
                 handler._to = to;
                 return handler;
             }
@@ -981,17 +993,17 @@
         },
         
         /**
-         * Get or set callback that will be executed when an Exception is reported.
-         * @param {function} callback that will be executed when the Exception is reported.
-         * @return Handler if callback is defined.  Callback if callback is not defined.
+         * Get or set reportCallback that will be executed when an Exception is reported.
+         * @param {function} reportCallback that will be executed when the Exception is reported.
+         * @return Handler if func is defined.  ReportCallback if func is not defined.
          */
-        callback: function (callback) {
-            if (callback) {
-                handler._callback = callback;
+        reportCallback: function (func) {
+            if (func !== undefined) {
+                handler._reportCallback = func;
                 return handler;
             }
             else {
-                return handler._callback;
+                return handler._reportCallback;
             }
         },
 
@@ -1082,7 +1094,9 @@
         },
         
         _handle: function (errorMsg, url, lineNumber, columnNumber, errorObj) {
-            var data, exception, optionsFunc, scope = handler.scope();
+            var optionsFunc = function (o) { return o.stacktrace(Boolean(errorObj && errorObj.stack)); },
+            	scope = handler.scope(),
+            data, exception;
             
             if (scope === handler.scopeOption.none) {
                 return;
@@ -1096,8 +1110,6 @@
                 console.log("Error in exceptions.js!");
                 console.log("handler.scope() returned " + scope + ".  It should have been handler.scopeOption.all, handler.scopeOption.exceptions, or handler.scopeOption.none");
             }
-            
-            optionsFunc = function (o) { return o.stacktrace(false); };
                 
             if (errorObj instanceof Exception) {
                 exception = errorObj;
@@ -1156,9 +1168,8 @@
             }
             else {
                 exception = new Exception(errorMsg, {
-                    optionsFunc: function (o) {
-                        return o.stacktrace(false);
-                    }});
+                    optionsFunc: optionsFunc 
+                });
             }
             data = exception.data();
             data.url = data.url || url;

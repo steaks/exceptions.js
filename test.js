@@ -9,13 +9,22 @@ module.exports = {
         window.exceptionReported = undefined;
         window.exceptions.handler
             .scope(window.exceptions.handler.scopeOption.all)
-            .callback(function (exception) {
+            .beforeReport(function (exception) {
+                exception.beforeReportCallbackExecuted = true;
+            })
+            .reportCallback(function (exception) {
                 exception.callbackExecuted = true;
                 window.exceptionReported = exception;
             })
         callback();
     },
     //basic Exception functionality
+    testExecutedBeforeReport: function (test) {
+        var exception = new window.exceptions.Exception("foo");
+        exception.report();
+        test.equals(exception.beforeReportCallbackExecuted, true);
+        test.done();
+    },
     testExecutedCallback: function (test) {
         var exception = new window.exceptions.Exception("foo");
         exception.report();
@@ -62,10 +71,10 @@ module.exports = {
     testOptionCallback: function (test) {
         var exception = new window.exceptions.Exception("foo", {
             optionsFunc: function (o) {
-                return o.callback(false);
+                return o.reportCallback(false);
             }
         });
-        test.equals(exception.options().callback(), false);
+        test.equals(exception.options().reportCallback(), false);
         test.done();
     },
     testOptionAllfalse: function (test) {
@@ -77,8 +86,9 @@ module.exports = {
         exception.report();
         test.equals(exception.options().stacktrace(), false);
         test.equals(exception.options().screenshot(), false);
-        test.equals(exception.options().post(), false);
-        test.equals(exception.options().callback(), false);
+        test.equals(exception.options().reportPost(), false);
+        test.equals(exception.options().reportToExceptionsJsPlatform(), false);
+        test.equals(exception.options().reportCallback(), false);
         test.done();
     },
     testDefaultGuard: function (test) {
@@ -86,11 +96,12 @@ module.exports = {
         exception.report();
         //we default to enable stacktrace and callback because we
         //have an Error.stack and a specified callback.
-        //But we haven't specified a html2canvas url, post url.
+        //But we haven't specified a html2canvas url, post url, or client id for exceptionsjs platform.
         test.equals(exception.options().stacktrace(), true);
         test.equals(exception.options().screenshot(), false);
-        test.equals(exception.options().post(), false);
-        test.equals(exception.options().callback(), true);
+        test.equals(exception.options().reportPost(), false);
+        test.equals(exception.options().reportToExceptionsJsPlatform(), false);
+        test.equals(exception.options().reportCallback(), true);
         test.done();
     },
     //Exception static functions
