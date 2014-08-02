@@ -1,36 +1,32 @@
 exceptions.js
 ======================
-_exceptions.js is currently in Beta and looking for users!  Please file issues or feedback in the issues section or by emailing steven.m.wexler@gmail.com.  Also, please email steven.m.wexler@gmail.com if you'd like to receive updates about this project including when it is released out of Beta._
-
-exceptions.js enhances Javscript error handling by providing a more comprehensive API for errors and by extending functionality of window.onerror.  exceptions.js is modeled off of C#'s exception infrastructure and provides the ability to record stacktraces, screenshots, inner exceptions with Javascript errors.  It also provides the ability to make post request that contain serialized exceptions so you can record and report Javascript errors.
+Exceptions.js enhances Javscript error handling by providing a more comprehensive API for errors and by extending functionality of window.onerror.  exceptions.js is modeled off of C#'s exception infrastructure and provides the ability to record stacktraces, screenshots, inner exceptions with Javascript errors.  Exceptions.js easily integrates with exceptionsjs platform (https://www.exceptionsjs.com) which completes the exception reporting process by translating the exception into an email with stacktraces, screenshots, and other relevant information.
 
 Basic setup and usage
 ----------------------
 ```javascript
-//Once you've included exceptions.js on your page:
+<script type="text/javascript" src="path/to/exceptions.js"></script>
 
 //Setup the exceptions handler to report errors when 
 //you call Exception.report() or window.onerror executes
 exceptions.handler
-    .stacktraceUrl("http://cdnjs.cloudflare.com/ajax/libs/stacktrace.js/0.6.0/stacktrace.js")
-    .html2canvasUrl("http://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.js")
-    .postUrl("http://localhost/handleException")
-    .callback(function (exception) {
-        console.log("We reported an exception!");
-        console.log(exception);
-    });
+    //Posting to exceptionsjs platform is the easiest way to track your exceptions.
+    //Register for free at https://www.exceptionsjs.com.
+    .postToExceptionsJsPlatform("CLIENT_ID")
+    //Set a custom postUrl if you want to bypass the exceptionsjs platform and handle the exception yourself.
+    .postUrl("http://localhost/path/to/errorhandler/");
 ```
 		
 ```javascript
 //Report an exception.
-var exception = new exceptions.Exception("Oh no!");
+var exception = new exceptions.Exception("Something went wrong!");
 exception.report();
 
 //Throw an exception.  The exceptions.handler will handle this thrown error when window.onerror is executed.
-throw new exceptions.Exception("Oh no!");
+throw new exceptions.Exception("Something went wrong!");
 
 //Include extra data with the exception.
-throw new exceptions.Exception("Oh no!", {
+throw new exceptions.Exception("Something went wrong!", {
     data: {
         foo: "bar"
     }
@@ -38,7 +34,8 @@ throw new exceptions.Exception("Oh no!", {
 
 //The exceptions.handler will handle this thrown error when window.onerror is executed.  However, 
 //you may find it more useful to throw an Exception rather than any arbirary object :)
-throw "Oh no!";
+throw Error("Something went wrong!");
+throw "Something went wrong!";
 
 ```
 
@@ -432,6 +429,19 @@ _return_
 | ---- | ----------- |
 | handler|function | Handler if callback is defined.  Callback if callback is not defined. |
 
+###### postToExceptionsjsPlatform
+Enable posting to exceptionsjs platform.  The exceptionsjs platform handles your Javascript error by parsing the serialized exception and constructing a useful exception email that includes stacktraces, screenshots, and extra information.  Register for exceptionsjs platform at https://exceptionsjs.com.  This option only works if you've enabled the option to allow unsecure reporting.  If you have enabled secure reporting you must send your exceptions to excpetionsjs platform using the full oauth2 process.  See https://exceptionsjs.com for useful libraries in many languages that make submitting exceptions with the full oauth2 process easy.
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| clientId | string | no | clientId that will be used with exceptionsjs platform |
+| to | string | no | email address that will receive the exception |
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| handler|string | Handler if clientId is defined.  ClientId if clientId is not defined. |
 
 ###### loadStacktraceJs
 Asynchronously load stacktrace.js
