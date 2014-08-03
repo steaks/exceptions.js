@@ -1,6 +1,6 @@
 exceptions.js
 ======================
-Exceptions.js enhances Javscript error handling by providing a more comprehensive API for errors and by extending functionality of window.onerror.  exceptions.js is modeled off of C#'s exception infrastructure and provides the ability to record stacktraces, screenshots, inner exceptions with Javascript errors.  Exceptions.js easily integrates with exceptionsjs platform (https://www.exceptionsjs.com) which completes the exception reporting process by translating the exception into an email with stacktraces, screenshots, and other relevant information.
+Exceptions.js provides error reporting with stacktraces, screenshots, DOM dumps, browser information, etc.  The library can be used as a standalone open source project or can be used with the exceptionsjs platform (https://www.exceptionsjs.com) which translates reported exceptions into emails and delivers them to registered developers.  See demos here: https://www.exceptionsjs.com/demo.
 
 Basic setup and usage
 ----------------------
@@ -8,16 +8,22 @@ Basic setup and usage
 <script type="text/javascript" src="path/to/exceptions.js"></script>
 
 //Setup the exceptions handler to report errors when 
-//you call Exception.report() or window.onerror executes
+//you invoke Exception.report() or window.onerror executes
 exceptions.handler
-    //Posting to exceptionsjs platform is the easiest way to track your exceptions.
+    //Reporting to exceptionsjs platform is the easiest way to track your exceptions.
     //Register for free at https://www.exceptionsjs.com.
-    .postToExceptionsJsPlatform("CLIENT_ID")
-    //Set a custom postUrl if you want to bypass the exceptionsjs platform and handle the exception yourself.
-    .postUrl("http://localhost/path/to/errorhandler/");
+    .reportToExceptionsJsPlatform("CLIENT_ID")
+    //Set a custom report post request that will be issued when an exception is reported.
+    //if you want to bypass the exceptionsjs platform and handle the exception yourself.
+    .reportPost({ url: "http://localhost/path/to/errorhandler/" });
 ```
 		
 ```javascript
+//The exceptions.handler will handle this thrown error when window.onerror is executed.  However, 
+//you may find it more useful to throw an Exception rather than any arbirary object :)
+throw new Error("Something went wrong!");
+throw "Something went wrong!";
+
 //Report an exception.
 var exception = new exceptions.Exception("Something went wrong!");
 exception.report();
@@ -31,12 +37,6 @@ throw new exceptions.Exception("Something went wrong!", {
         foo: "bar"
     }
 });
-
-//The exceptions.handler will handle this thrown error when window.onerror is executed.  However, 
-//you may find it more useful to throw an Exception rather than any arbirary object :)
-throw Error("Something went wrong!");
-throw "Something went wrong!";
-
 ```
 
 API
@@ -207,7 +207,7 @@ _return_
 
 ###### report
 
-Report the exception (without throwing it).  Reporting an exception involves making a post request with a serialized exception object if the post option is enabled and/or executing a callback if the callback option is enabled.  The post request uses the url returned from exception.handler.postUrl() and headers returned from exception.handler.postHeaders().  It will not make a post request if no url is specified.  The callback will execute the function returned from exceptions.handlers.callback and will not execute the callback if no function is specified.
+Report the exception (without throwing it).  Reporting an exception involves making a post request with a serialized exception object if the post option is enabled and/or executing a callback if the callback option is enabled.  The post request uses the url returned from exception.handler.reportUrl() and headers returned from exception.handler.postHeaders().  It will not make a post request if no url is specified.  The callback will execute the function returned from exceptions.handlers.callback and will not execute the callback if no function is specified.
 
 
 ###### toSerializableObject
@@ -390,7 +390,7 @@ _return_
 | ---- | ----------- |
 | handler|string | Handler if stacktraceUrl is defined.  Url to stacktrace.js if stacktraceUrl is not defined. |
 
-###### postUrl
+###### reporttUrl
 Get or set url used to post the serialized exception when reported.
 
 | Parameter | Type | Required | Description |
@@ -429,7 +429,7 @@ _return_
 | ---- | ----------- |
 | handler|function | Handler if callback is defined.  Callback if callback is not defined. |
 
-###### postToExceptionsjsPlatform
+###### reportToExceptionsjsPlatform
 Enable posting to exceptionsjs platform.  The exceptionsjs platform handles your Javascript error by parsing the serialized exception and constructing a useful exception email that includes stacktraces, screenshots, and extra information.  Register for exceptionsjs platform at https://exceptionsjs.com.  This option only works if you've enabled the option to allow unsecure reporting.  If you have enabled secure reporting you must send your exceptions to excpetionsjs platform using the full oauth2 process.  See https://exceptionsjs.com for useful libraries in many languages that make submitting exceptions with the full oauth2 process easy.
 
 | Parameter | Type | Required | Description |
