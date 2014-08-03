@@ -16,6 +16,7 @@ module.exports = {
                 exception.callbackExecuted = true;
                 window.exceptionReported = exception;
             })
+            .guard(new window.exceptions.Guard());
         callback();
     },
     //basic Exception functionality
@@ -70,18 +71,14 @@ module.exports = {
     //Options and guards
     testOptionCallback: function (test) {
         var exception = new window.exceptions.Exception("foo", {
-            optionsFunc: function (o) {
-                return o.reportCallback(false);
-            }
+            options: new window.exceptions.Options({ reportCallback: false })
         });
         test.equals(exception.options().reportCallback(), false);
         test.done();
     },
     testOptionAllfalse: function (test) {
         var exception = new window.exceptions.Exception("foo", {
-            optionsFunc: function (o) {
-                return o.toggleAll(false);
-            }
+        	options: new window.exceptions.Options().toggleAll(false)
         });
         exception.report();
         test.equals(exception.options().stacktrace(), false);
@@ -102,6 +99,25 @@ module.exports = {
         test.equals(exception.options().reportPost(), false);
         test.equals(exception.options().reportToExceptionsJsPlatform(), false);
         test.equals(exception.options().reportCallback(), true);
+        test.done();
+    },
+    testCustomGuard: function (test) {
+        var guard = new window.exceptions.Guard()
+            .protectAgainst(function (o, e) {
+                if (e.message() === "foo") {
+                    return o.toggleAll(false);
+                }
+                return o;
+            });
+        window.exceptions.handler.guard(guard);
+        var exception = new window.exceptions.Exception("foo");
+        exception.report();
+        
+        test.equals(exception.options().stacktrace(), false);
+        test.equals(exception.options().screenshot(), false);
+        test.equals(exception.options().reportPost(), false);
+        test.equals(exception.options().reportToExceptionsJsPlatform(), false);
+        test.equals(exception.options().reportCallback(), false);
         test.done();
     },
     //Exception static functions
@@ -231,63 +247,96 @@ module.exports = {
     },
     //handler
     testHandleException: function (test) {
-        window.exceptions.handler._handle("foo", "url", 1, 1, new window.exceptions.Exception("message"));
+        window.exceptions.handler.handle({
+            errorMessage: "foo", 
+            url: "url", 
+            lineNumber: 1, 
+            columnNumber: 1, 
+            error: new window.exceptions.Exception("message") });
         test.equals(window.exceptionReported.name(), "Exception");
         test.ok(window.exceptionReported instanceof window.exceptions.Exception);
         test.ok(window.exceptionReported.error() instanceof Error);
         test.done();
     },
     testHandleError: function (test) {
-        window.exceptions.handler._handle("foo", "url", 1, 1, new Error());
+        window.exceptions.handler.handle({
+            errorMessage: "foo", 
+            url: "url", 
+            lineNumber: 1, 
+            columnNumber: 1, 
+            error: new Error() });
         test.equals(window.exceptionReported.name(), "Exception");
         test.ok(window.exceptionReported instanceof window.exceptions.Exception);
         test.ok(window.exceptionReported.error() instanceof Error);
         test.done();
     },
     testHandleEvalError: function (test) {
-        window.exceptions.handler._handle("foo", "url", 1, 1, new EvalError());
+        window.exceptions.handler.handle({
+            errorMessage: "foo", 
+            url: "url", 
+            lineNumber: 1, 
+            columnNumber: 1, 
+            error: new EvalError() });
         test.equals(window.exceptionReported.name(), "EvalException");
         test.ok(window.exceptionReported instanceof window.exceptions.Exception);
         test.ok(window.exceptionReported.error() instanceof EvalError);
         test.done();
     },
     testHandleRangeError: function (test) {
-        window.exceptions.handler._handle("foo", "url", 1, 1, new RangeError());
+        window.exceptions.handler.handle({
+            errorMessage: "foo", 
+            url: "url", 
+            lineNumber: 1, 
+            columnNumber: 1, 
+            error: new RangeError() });
         test.equals(window.exceptionReported.name(), "RangeException");
         test.ok(window.exceptionReported instanceof window.exceptions.Exception);
         test.ok(window.exceptionReported.error() instanceof RangeError);
         test.done();
     },
-    testHandleTypeError: function (test) {
-        window.exceptions.handler._handle("foo", "url", 1, 1, new TypeError());
-        test.equals(window.exceptionReported.name(), "TypeException");
-        test.ok(window.exceptionReported instanceof window.exceptions.Exception);
-        test.ok(window.exceptionReported.error() instanceof TypeError);
-        test.done();
-    },
     testHandleSyntaxError: function (test) {
-        window.exceptions.handler._handle("foo", "url", 1, 1, new SyntaxError());
+        window.exceptions.handler.handle({
+            errorMessage: "foo", 
+            url: "url", 
+            lineNumber: 1, 
+            columnNumber: 1, 
+            error: new SyntaxError() });
         test.equals(window.exceptionReported.name(), "SyntaxException");
         test.ok(window.exceptionReported instanceof window.exceptions.Exception);
         test.ok(window.exceptionReported.error() instanceof SyntaxError);
         test.done();
     },
     testHandleTypeError: function (test) {
-        window.exceptions.handler._handle("foo", "url", 1, 1, new TypeError());
+        window.exceptions.handler.handle({
+            errorMessage: "foo", 
+            url: "url", 
+            lineNumber: 1, 
+            columnNumber: 1, 
+            error: new TypeError() });
         test.equals(window.exceptionReported.name(), "TypeException");
         test.ok(window.exceptionReported instanceof window.exceptions.Exception);
         test.ok(window.exceptionReported.error() instanceof TypeError);
         test.done();
     },
     testHandleURIError: function (test) {
-        window.exceptions.handler._handle("foo", "url", 1, 1, new URIError());
+        window.exceptions.handler.handle({
+            errorMessage: "foo", 
+            url: "url", 
+            lineNumber: 1, 
+            columnNumber: 1, 
+            error: new URIError() });
         test.equals(window.exceptionReported.name(), "URIException");
         test.ok(window.exceptionReported instanceof window.exceptions.Exception);
         test.ok(window.exceptionReported.error() instanceof URIError);
         test.done();
     },
     testHandleURIError: function (test) {
-        window.exceptions.handler._handle("foo", "url", 1, 1, new URIError());
+        window.exceptions.handler.handle({
+            errorMessage: "foo", 
+            url: "url", 
+            lineNumber: 1, 
+            columnNumber: 1, 
+            error: new URIError() });
         test.equals(window.exceptionReported.name(), "URIException");
         test.ok(window.exceptionReported instanceof window.exceptions.Exception);
         test.ok(window.exceptionReported.error() instanceof URIError);
@@ -297,10 +346,20 @@ module.exports = {
         var exception = new window.exceptions.Exception("foo");
         window.exceptions.handler.scope(window.exceptions.handler.scopeOption.exceptions);
 
-        window.exceptions.handler._handle("foo", "url", 1, 1, new Error("foo"));
+        window.exceptions.handler.handle({
+            errorMessage: "foo", 
+            url: "url", 
+            lineNumber: 1, 
+            columnNumber: 1, 
+            error: new Error("foo") });
         test.equals(window.exceptionReported, undefined);
 
-        window.exceptions.handler._handle("foo", "url", 1, 1, exception);
+        window.exceptions.handler.handle({
+            errorMessage: "foo", 
+            url: "url", 
+            lineNumber: 1, 
+            columnNumber: 1, 
+            error: exception });
         test.equals(window.exceptionReported, exception);
         test.done();
     }

@@ -103,16 +103,16 @@
      * the exception is reported.
      * @constructor
      */
-    function Options() {
+    function Options(config) {
         if (!(this instanceof Options)) {
             return new Options();
         }
-        this._stacktrace = false;
-        this._screenshot = false;
-        this._reportPost = false;
-        this._reportCallback = false;
-        this._reportToExceptionsJsServer = false;
-        this._DOMDump = false;
+        this._stacktrace = config && config.stacktrace !== undefined ? config.stacktrace : true;
+        this._screenshot = config && config.screenshot !== undefined ? config.screenshot : true;
+        this._reportPost = config && config.reportPost !== undefined ? config.reportPost : true;
+        this._reportCallback = config && config.reportCallback !== undefined ? config.reportCallback : true;
+        this._reportToExceptionsJsPlatform = config && config.reportToExceptionsJsPlatform !== undefined ? config.reportToExceptionsJsPlatform : true;
+        this._DOMDump = config && config.DOMDump !== undefined ? config.DOMDump : true;
     }
     
     Options.prototype = {
@@ -187,8 +187,8 @@
             return this._reportToExceptionsJsPlatform;
         },
         
-        domDump: function (enable) {
-        	if (enable !== undefined) {
+        DOMDump: function (enable) {
+            if (enable !== undefined) {
                 this._DOMDump = Boolean(enable);
                 return this;
             }
@@ -205,7 +205,7 @@
                 .reportPost(enable)
                 .reportCallback(enable)
                 .reportToExceptionsJsPlatform(enable)
-                .domDump(enable);
+                .DOMDump(enable);
         }
     };
     
@@ -216,9 +216,8 @@
      *                      call its base exception's constructor.  For debugging convenience, 
      *                      you'll probably want this function to have a name.
      *        baseException - {Exception} Exception that the custom exception will inherit from
-     *        defaultOptionsFunc - {function} Provide a function that takes in an Options object 
-     *                               and returns that Options object with enabled or disabled options.  
-     *                               You'll usually want to enable all options by default. 
+     *        defaultOptions - {Options} Options that will be used by default for the exception 
+     *                           if no others are specified.  You'll usually want to enable all options by default. 
      * @return Custom exception.  The type will be the function you provided in the config.exception property.
      */
     function createCustomException(config) {
@@ -232,7 +231,7 @@
         createCustomException._setupDefaults(
             config.exception,
             config.baseException,
-            config.defaultOptionsFunc);
+            config.defaultOptions);
         return config.exception;
     }
     
@@ -269,12 +268,19 @@
     };
     
     createCustomException._createDefaultOptions = function (exception) {
-        return function defaultOptionsFunc(optionsFunc){
-            if (optionsFunc) {
-                exception._defaultOptionsFunc = optionsFunc;
+        return function defaultOptions(options){
+            if (options) {
+                exception._defaultOptions = options;
                 return exception;
             }
-            return exception._defaultOptionsFunc;
+            return new Options({
+                stacktrace: exception._defaultOptions.stacktrace(),
+                screenshot: exception._defaultOptions.screenshot(),
+                reportPost: exception._defaultOptions.reportPost(),
+                reportCallback: exception._defaultOptions.reportCallback(),
+                reportToExceptionsJsPlatform: exception._defaultOptions.reportToExceptionsJsPlatform(),
+                DOMDump: exception._defaultOptions.DOMDump()
+            });
         };
     };
     
@@ -282,7 +288,7 @@
         var creators = {
             throwIf: createCustomException._createThrowIf(exception),
             reportIf: createCustomException._createReportIf(exception),
-            defaultOptionsFunc: createCustomException._createDefaultOptions(exception)
+            defaultOptions: createCustomException._createDefaultOptions(exception)
         }, 
             staticFunction;
         for (staticFunction in creators) {
@@ -297,8 +303,17 @@
         sub.prototype.constructor = sub;
     };
     
-    createCustomException._setupDefaults = function (sub, base, defaultOptionsFunc) {
-        sub.defaultOptionsFunc(defaultOptionsFunc || base.defaultOptionsFunc());
+    createCustomException._setupDefaults = function (sub, base, defaultOptions) {
+        sub.defaultOptions(
+            defaultOptions || 
+            new Options({
+                stacktrace: base.defaultOptions().stacktrace(),
+                screenshot: base.defaultOptions().screenshot(),
+                reportPost: base.defaultOptions().reportPost(),
+                reportCallback: base.defaultOptions().reportCallback(),
+                reportToExceptionsJsPlatform: base.defaultOptions().reportToExceptionsJsPlatform(),
+                DOMDump: base.defaultOptions().DOMDump()
+            }));
     };
     
     /**
@@ -321,11 +336,8 @@
      *               You'll notice a screenshot property is added to the data object when the screenshot
      *               option is enabled for this Exception.  Also, a browser property is added to the 
      *               data object.
-     *        optionsFunc - {function} - Provide a function that takes in an Options object and returns
-     *                      that Options object with enabled or disabled options.  The received options
-     *                      object will be Options object returned from the defaultOptionsFunc for the 
-     *                      exception.  In most cases, the defaultOptionsFunc returns an Options object
-     *                      with all options enabled.
+     *        options - {Options} - Provide an Options object In most cases, the defaultOptions  will be sufficient
+     *                 and this property is not needed.
      *        
      */
     function Exception(message, config) {
@@ -333,7 +345,6 @@
             if (!(this instanceof Exception)) {
                 return new Exception(message, config);
             }
-            var defaultOptions = this.constructor.defaultOptionsFunc()(new Options());
             
             this._error = (message instanceof Error) ? message : new Error(message);
             config = config || {};
@@ -341,7 +352,7 @@
             this._stacktrace = null;
             this._innerException = config.innerException || null;
             this._data = config.data || {}; 
-            this._options = config.optionsFunc ? config.optionsFunc(defaultOptions) : defaultOptions;
+            this._options = config.options ? config.options : this.constructor.defaultOptions();
             this._guardedOptions = exceptions.handler.guard()._restrict(this._options, this);
             this._listeners = [];
             
@@ -353,8 +364,8 @@
             if (this._guardedOptions.screenshot()) {
                 this._takeScreenshot();
             }
-            if (this._guardedOptions.domDump()) {
-            	this._getDOMDump();
+            if (this._guardedOptions.DOMDump()) {
+                this._getDOMDump();
             }
         }
         catch (e) {
@@ -436,16 +447,16 @@
             try {
                 if (!this._screenshotComplete && this._guardedOptions.screenshot()) {
                     this._listeners.push(function () {
-                    	if (exceptions.handler.beforeReport()) {
-                    		exceptions.handler.beforeReport()(this);
-                    	}
-                    	this._report();
+                        if (exceptions.handler.beforeReport()) {
+                            exceptions.handler.beforeReport()(this);
+                        }
+                        this._report();
                     });
                 }
                 else {
-                	if (exceptions.handler.beforeReport()) {
-                		exceptions.handler.beforeReport()(this);
-                	}
+                    if (exceptions.handler.beforeReport()) {
+                        exceptions.handler.beforeReport()(this);
+                    }
                     this._report();
                 }
             }
@@ -537,7 +548,7 @@
             //because we consider them to be first order properties on an exception which don't 
             //need to live in the data object.
         },        
-        _report: function () {      	
+        _report: function () {          
             if (this._guardedOptions.reportPost()) {
                 this._reportPost();
             }
@@ -565,7 +576,7 @@
             return "Unable to retrieve stacktrace";
         },
         _takeScreenshot: function() {
-            var callback, self = this;
+            var callback, self = this, scrollX, scrollY;
             
             if (!window.html2canvas && !handler._attemptedToLoadHtml2Canvas) {
                 handler.loadHtml2Canvas(function () {
@@ -583,9 +594,16 @@
                         this._listeners[i].call(self);
                     }
                 };
+                scrollX = window.scrollX;
+                scrollY = window.scrollY;
                 window.html2canvas(document.body, {
                     onrendered: function (canvas) {
                         try {
+                            //There is currently a bug in html2canvas that causes the page to scroll to the
+                            //top during its operation.  This bug will be fix in version 0.5.  While using
+                            //version 0.4.x, we'll include this fix so users don't experience scrolling issues.
+                            //See github issues at html2canvas #57, #200, #254
+                            window.scrollTo(scrollX, scrollY);
                             callback.call(self, canvas);
                         } catch (e) {
                             this._screenshotComplete = true;                            
@@ -619,7 +637,6 @@
                 to = handler.to(),
                 i;
             http.open("POST", "https://www.platform.exceptionsjs.com/v0.1/reportWithClientId/", true);
-            http.open("POST", "/v0.1/reportWithClientId/", true);
             
             //Send the proper header information along with the request
             http.setRequestHeader("Content-type", "application/x-www-form-urlencoded; charset=UTF-8");
@@ -632,16 +649,14 @@
             reportCallback(this);
         },
         _getDOMDump: function ()  {
-        	var htmlNode = document.getElementsByTagName("html")[0];
-        	this.data().DOMDump = "<html>" + htmlNode.innerHTML + "</html>";
+            var htmlNode = document.getElementsByTagName("html")[0];
+            this.data().DOMDump = "<html>" + htmlNode.innerHTML + "</html>";
         },
         constructor: Exception
     };
     
     //setup
-    Exception.defaultOptionsFunc(function (o) {
-        return o.toggleAll(true);
-    });
+    Exception.defaultOptions(new Options());
     
     /**
      * ArgumentException inherits from Exception.  It has the same 
@@ -765,9 +780,7 @@
      * Performing exception operations can be expensive or superfluous sometimes.  For example, you may 
      * not want to take a screenshot of your page if you've hit 10 errors in a row because it could cause 
      * noticable performance errors. Specify a guard with exceptions.handler.guard() to disable exception 
-     * options you do not wish to perform. The guard restricts options for all reported exceptions.  
-     * exceptions.js does not expose a way to create a Guard object.  Instead, it passes a Guard object to 
-     * the guardFunc specified in handler.guard.  The guardFunc is expected to manipulate and return the Guard.
+     * options you do not wish to perform. 
      */
     function Guard() {
         if (!(this instanceof Guard)) {
@@ -777,7 +790,7 @@
     }
     
     Guard.prototype = {
-        _restrictByAvailableOptions: function (o, exception) {
+        _protectAgainstUnavailableOptions: function (o, exception) {
             if (!exception.error().stack && !exceptions.handler.stacktraceUrl()){
                 o.stacktrace(false);
             }
@@ -805,9 +818,14 @@
          * @param {function} - function that enables/disables and returns the options if the 
          *        exception threshold has been exceeded.  If not specified, we'll disable all
          *        options for the Exception.  You'll likely only want to disable options in this
-         *        function
+         *        function.
          */
-        restrictByExceptionsCount: function (count, seconds, optionsFunc) {
+        protectAgainstBurst: function (config) {
+            var count = config.count,
+                seconds = config.seconds,
+                optionsFunc = config.optionsFunc;
+            ArgumentException.throwIf(!config.count || config.count < 0, "You must specify a number greater than zero for count.")
+            
             var restrictFunc = function (o) {
                 var exceptionsCount = handler.retrieveReportedExceptionsCount(seconds);
                 if (exceptionsCount > count) {
@@ -826,7 +844,7 @@
          *        The function will receive two parameters: the current options for the Exception and
          *        the Exception itself.  It should return the provided 
          */
-        restrictBy: function (restrictFunc) {
+        protectAgainst: function (restrictFunc) {
             this._restrictions.push(restrictFunc);
             return this;
         },
@@ -834,7 +852,7 @@
             for(var i in this._restrictions) {
                 this._restrictions[i](o, exception);
             }
-            this._restrictByAvailableOptions(o, exception);
+            this._protectAgainstUnavailableOptions(o, exception);
             return o;
         }
     };
@@ -890,13 +908,13 @@
         
         /**
          * Get or set a guard that will be used to restrict Exception options.
-         * @param {function} Function that receives one parameter: Guard and should return
-         *        the received Guard.
-         * @return The handler if guardFunc is defined.  Handler's guard if guardFunc is not defined.
+         * @param {Gurard} guard that protects against bursts of exceptions, repeated exceptions,
+         * 		  or any other exceptions that should not be reported.
+         * @return The handler if guard is defined.  Handler's guard if guard is not defined.
          */
-        guard: function (guardFunc) {
-            if (guardFunc) {
-                handler._guard = guardFunc(new Guard());
+        guard: function (guard) {
+            if (guard) {
+                handler._guard = guard;
                 return this;
             }
             else {
@@ -931,7 +949,7 @@
         },
         
         beforeReport: function (func) {
-        	if (func !== undefined) {
+            if (func !== undefined) {
                 handler._beforeReportFunc = func;
                 return handler;
             }
@@ -943,12 +961,12 @@
          * @param {array} Array of objects with the form { bstrHeader: "header", bstrValue: "value" }
          * @return Handler if postHeaders is defined.  Post headers for post request if postHeaders is not defined.
          */
-        reportPost: function (url, headers) {
-        	if (url !== undefined) {
-        		handler._reportPost = { url: url, headers: headers || [] };
-        		return handler;
-        	}
-        	return handler._reportPost;
+        reportPost: function (config) {
+            if (config !== undefined) {
+                handler._reportPost = { url: config.url, headers: config.headers || [] };
+                return handler;
+            }
+            return handler._reportPost;
         },
         
         /**
@@ -964,15 +982,15 @@
          * @param {string} post request url
          * @return Handler if postUrl is defined.  Url for post request if postUrl is not defined.
          */
-        reportToExceptionsJsPlatform: function (clientId, to) {
-            if (clientId !== undefined) {
-                handler.clientId(clientId);    
-                if (to) {
-                    handler.to(to);
+        reportToExceptionsJsPlatform: function (config) {
+            if (config !== undefined) {
+                handler.clientId(config.clientId);    
+                if (config.to) {
+                    handler.to(config.to);
                 }
                 return handler;
             }
-            return handler.clientId();
+            return { clientId: handler.clientId(), to: handler.to() || "email address associated with client at exceptionsjs.com" };
             
         },
         
@@ -1062,41 +1080,22 @@
             return i + 1;
         },
         
-        _setup: function () {
-            handler
-                ._setupDefaultGuard()
-                ._setupOnError()
-                .stacktraceUrl("http://cdnjs.cloudflare.com/ajax/libs/stacktrace.js/0.6.0/stacktrace.js")
-                .html2canvasUrl("http://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.js");
-        },
-
-        _setupOnError: function () {
-            if (handler._isSetup) {
-                return;
-            }
-            var previousOnError = window.onerror;
-            window.onerror = function (errorMsg, url, lineNumber, columnNumber, errorObj) {
-                if (typeof previousOnError === "function") {
-                    previousOnError(errorMsg, url, lineNumber, columnNumber, errorObj);
-                }
-                handler._handle(errorMsg, url, lineNumber, columnNumber, errorObj);
-            };
-            handler._isSetup = true;
-            return handler;
-        },
-        
-        _setupDefaultGuard: function () {
-            handler.guard(function (g) {
-                return g.restrictByExceptionsCount(10, 10)
-                        .restrictByExceptionsCount(20);
-            });
-            return handler;
-        },
-        
-        _handle: function (errorMsg, url, lineNumber, columnNumber, errorObj) {
-            var optionsFunc = function (o) { return o.stacktrace(Boolean(errorObj && errorObj.stack)); },
-            	scope = handler.scope(),
-            data, exception;
+        /**
+         * Handle any error by turning it into an exception and reporting it.
+         * @param {Object} config object for information that will be used to
+         * 		  create an exception and report it.  Properties are: errorMsg, 
+         * 		  url, lineNumber, columnNumber, and error.
+         */
+        handle: function (config) {
+            var errorMsg = config.errorMessage, 
+                url = config.url, 
+                lineNumber = config.lineNumber, 
+                columnNumber = config.columnNumber, 
+                errorObj = config.error,
+                data = config.data || {},
+                exception,
+                options = new Options().stacktrace(Boolean(errorObj && errorObj.stack)),
+                scope = handler.scope();
             
             if (scope === handler.scopeOption.none) {
                 return;
@@ -1117,58 +1116,66 @@
             else if (errorObj instanceof Error) {
                 if (errorObj instanceof EvalError) {
                     exception = new EvalException(errorObj, {
-                        optionsFunc: optionsFunc
+                        options: options,
+                        data: data
                     });
                 }
                 else if (errorObj instanceof RangeError) {
                     exception = new RangeException(errorObj, {
-                        optionsFunc: optionsFunc
+                        options: options,
+                        data: data
                     });
                 }
                 else if (errorObj instanceof ReferenceError) {
                     exception = new ReferenceException(errorObj, {
-                        optionsFunc: optionsFunc
+                        options: options,
+                        data: data
                     });
                 }
                 else if (errorObj instanceof SyntaxError) {
                     exception = new SyntaxException(errorObj, {
-                        optionsFunc: optionsFunc
+                        options: options,
+                        data: data
                     });
                 }
                 else if (errorObj instanceof TypeError) {
                     exception = new TypeException(errorObj, {
-                        optionsFunc: optionsFunc
+                        options: options,
+                        data: data
                     });
                 }
                 else if (errorObj instanceof URIError) {
                     exception = new URIException(errorObj, {
-                        optionsFunc: optionsFunc
+                        options: options,
+                        data: data
                     });
                 }
                 else {
                     exception = new Exception(errorObj, {
-                        optionsFunc: optionsFunc
+                        options: options,
+                        data: data
                     });
                 }
             }
             else if (errorObj !== undefined) {
                 if (typeof errorObj === "string" || errorObj instanceof String) {
-                    exception = new Exception(errorMsg, {
-                        optionsFunc: optionsFunc
+                    exception = new Exception(errorMsg || errorObj, {
+                        options: options,
+                        data: data
                     });
                 }
                 else {
-                    exception = new Exception(errorMsg, {
-                        data: {
-                            errorWithUnknownType: errorObj
-                        },
-                        optionsFunc: optionsFunc 
+                    data.errorWithUnknownType = errorObj;
+                    exception = new Exception(errorMsg || errorObj.toString(), {
+                        options: options,
+                        data: data
                     });
                 }
             }
             else {
                 exception = new Exception(errorMsg, {
-                    optionsFunc: optionsFunc 
+                    options: options,
+                    data: data
                 });
             }
             data = exception.data();
@@ -1176,6 +1183,34 @@
             data.lineNumber = data.lineNumber || lineNumber;
             data.columnNumber = data.columnNumber || columnNumber;
             exception.report();
+        },        
+        
+        _setup: function () {
+            handler
+                ._setupDefaultGuard()
+                ._setupOnError()
+                .stacktraceUrl("https://cdnjs.cloudflare.com/ajax/libs/stacktrace.js/0.6.0/stacktrace.js")
+                .html2canvasUrl("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.js");
+        },
+
+        _setupOnError: function () {
+            if (handler._isSetup) {
+                return;
+            }
+            var previousOnError = window.onerror;
+            window.onerror = function (errorMsg, url, lineNumber, columnNumber, errorObj) {
+                if (typeof previousOnError === "function") {
+                    previousOnError(errorMsg, url, lineNumber, columnNumber, errorObj);
+                }
+                handler.handle({ errorMessage: errorMsg, url: url, lineNumber: lineNumber, columnNumber: columnNumber, error: errorObj });
+            };
+            handler._isSetup = true;
+            return handler;
+        },
+        
+        _setupDefaultGuard: function () {
+            handler.guard(new Guard().protectAgainstBurst({ count: 10, seconds: 10 }).protectAgainstBurst({ count: 20 }));
+            return handler;
         },
 
         _pushReportedException: function (exception) {
@@ -1187,6 +1222,9 @@
     handler._setup();
     
     exceptions = {
+        handler: handler,
+        Guard: Guard,
+        Options: Options,
         Exception: Exception,
         ArgumentException: ArgumentException,
         InvalidOperationException: InvalidOperationException,
@@ -1197,8 +1235,7 @@
         SyntaxException: SyntaxException,
         TypeException: TypeException,
         URIException: URIException,
-        createCustomException: createCustomException,
-        handler: handler
+        createCustomException: createCustomException
     };
     
     window.exceptions = exceptions;
