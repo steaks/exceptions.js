@@ -93,7 +93,7 @@ var bar = new exceptions.Exception(new Error("Oh no!");
 var baz = new exceptions.Exception("Oh no!", { 
     name: "OverriddenExceptionName",
     innerException: foo,
-    data { 
+    data: { 
         foo: "bar"
     },
     options: new exceptions.Options().stacktrace(false).screenshot(false)
