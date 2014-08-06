@@ -541,10 +541,11 @@ Performing exception operations can be expensive or superfluous sometimes.  For 
 Disable Exception options if the exception reported count threshold has been exceeded.  See handler.reportedExceptions for more information about how we defined a reported exception.
 
 | Parameter | Type | Required | Description |
+| --------- | ---- | --------- | ----------- |
 | config | object | yes | configuration object to specify how you want to protect your page from bursts of exceptions |
 
 | Property | Type | Required | Description |
-| --------- | ---- | -------- | ----------- |
+| -------- | ---- | -------- | ----------- |
 | count | int | yes | Threshold that must not be exceed lest you'll disable Exception options. |
 | seconds | int | no | Last number of seconds for which we care to count exceptions.  If not specified, we'll use the total number of exceptions reported since the exception handler was setup. |
 | optionsFunc | function | no | function that enables/disables and returns the options if the exception threshold has been exceeded.  If not specified, we'll disable all options for the Exception.  You'll likely only want to disable options in this function. |
