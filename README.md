@@ -351,15 +351,14 @@ _return_
 
 
 ```javascript
-handler.guard(new exceptions.Guard()
-            .protectAgainstBurst({ count: 10, seconds: 2 })
-            .protectAgainst(function (o, exception) {
-                if ( exception instanceof exceptions.SyntaxException) {
-                    o.stacktrace(false);
-                }
-                return o;
-            });
-});
+exceptions.handler.guard(new exceptions.Guard()
+    .protectAgainstBurst({ count: 10, seconds: 2 })
+    .protectAgainst(function (o, exception) {
+        if (exception instanceof exceptions.SyntaxException) {
+            o.stacktrace(false);
+        }
+        return o;
+    }));
 ```
 
 ###### html2canvasUrl
@@ -389,33 +388,25 @@ _return_
 | ---- | ----------- |
 | handler|string | Handler if stacktraceUrl is defined.  Url to stacktrace.js if stacktraceUrl is not defined. |
 
-###### reporttUrl
-Get or set url used to post the serialized exception when reported.
+###### reportPost
+Get or set the configuration used to post the serialized exception when reported.
 
 | Parameter | Type | Required | Description |
 | --------- | ---- | -------- | ----------- |
-| postUrl | string | no | post request url |
+| config | object | no | Configuration for how to send the post request to report the exception to an arbitrary url |
 
-_return_
-
-| Type | Description |
-| ---- | ----------- |
-| handler|string | Handler if postUrl is defined.  Url for post request if postUrl is not defined. |
-
-###### postHeaders
-Get or set HTTP headers used to post the serialized exception when reported.
-
-| Parameter | Type | Required | Description |
+| Property | Type | Required | Description |
 | --------- | ---- | -------- | ----------- |
+| postUrl | string | yes | post request url |
 | postHeaders | array | no | Array of objects with the form { bstrHeader: "header", bstrValue: "value" } |
 
 _return_
 
 | Type | Description |
 | ---- | ----------- |
-| handler|string | Handler if postHeaders is defined.  Post headers for post request if postHeaders is not defined. |
+| handler|config | Handler if postUrl is defined.  Config for post request if config parameter is not defined. |
 
-###### callback
+###### reportCallback
 Get or set callback that will be executed when an Exception is reported.
 
 | Parameter | Type | Required | Description |
@@ -567,7 +558,7 @@ _return_
 | Guard | The guard |
 
 ```javascript
-handler.guard(new exceptions.Guard().protectAgainstBurst({ count: 10, seconds: 2, optionsFunc: function (o) { return o.stacktrace(false); } });
+exceptions.handler.guard(new exceptions.Guard().protectAgainstBurst({ count: 10, seconds: 2, optionsFunc: function (o) { return o.stacktrace(false); } });
 });
 ```
 
