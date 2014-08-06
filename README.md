@@ -45,6 +45,7 @@ exceptions.js adds the exceptions property to the window object which exposes:
 
 | Property | Description |
 | -------- | ----------- |
+| Guard | Guard to protect your page from slowing down or a large influx of error emails when your application encounters a burst of exceptions |
 | Exception | Base exception.  All other exceptions inherit from Exception. |
 | ArgumentException | An exception inherited from Exception that is useful for throwing or reporting exceptions related to function arguments |
 | InvalidOperationException | An exception inherited from Exception that is useful for throwing or reporting exceptions related to invalid operations |
@@ -342,19 +343,19 @@ _parameters_
 
 | Parameter | Type | Required | Description |
 | --------- | ---- | -------- | ----------- |
-| guardFunc | function | no | Function that receives one parameter: Guard and should return the received Guard. |
+| guard | Guard | no | guard that protects against bursts of exceptions, repeated exceptions, or any other exceptions that should not be reported. |
 
 _return_
 
 | Type | Description |
 | ---- | ----------- |
-| handler|Guard | The handler if guardFunc is defined.  Handler's guard if guardFunc is not defined. |
+| handler|Guard | The handler if guard is defined.  Handler's guard if guard is not defined. |
 
 
 ```javascript
-handler.guard(function (g) {
-    return g.restrictByExceptionsCount(10, 2)
-            .restrictBy(function (o, exception) {
+handler.guard(new exceptions.Guard()
+            .protectAgainstBurst({ count: 10, seconds: 2 })
+            .protectAgainst(function (o, exception) {
                 if ( exception instanceof exceptions.SyntaxException) {
                     o.stacktrace(false);
                 }
@@ -534,12 +535,15 @@ _return_
 | Options | Options object |
 
 ##Guard
-Performing exception operations can be expensive or superfluous sometimes.  For example, you may not want to take a screenshot of your page if you've hit 10 errors in a row because it could cause noticable performance errors. Specify a guard with exceptions.handler.guard() to disable exception options you do not wish to perform. The guard restricts options for all reported exceptions.  exceptions.js does not expose a way to create a Guard object.  Instead, it passes a Guard object to the guardFunc specified in handler.guard.  The guardFunc is expected to manipulate and return the Guard.
+Performing exception operations can be expensive or superfluous sometimes.  For example, you may not want to take a screenshot of your page if you've hit 10 errors in a row because it could cause noticable performance errors. Specify a guard with exceptions.handler.guard() to disable exception options you do not wish to perform. The guard restricts options for all reported exceptions.
 
-###### restrictByExceptionsCount
+###### protectAgainstBurst
 Disable Exception options if the exception reported count threshold has been exceeded.  See handler.reportedExceptions for more information about how we defined a reported exception.
 
 | Parameter | Type | Required | Description |
+| config | object | yes | configuration object to specify how you want to protect your page from bursts of exceptions |
+
+| Property | Type | Required | Description |
 | --------- | ---- | -------- | ----------- |
 | count | int | yes | Threshold that must not be exceed lest you'll disable Exception options. |
 | seconds | int | no | Last number of seconds for which we care to count exceptions.  If not specified, we'll use the total number of exceptions reported since the exception handler was setup. |
@@ -553,12 +557,11 @@ _return_
 | Guard | The guard |
 
 ```javascript
-handler.guard(function (g) {
-    return g.restrictByExceptionsCount(10, 2, function (o) { return o.stacktrace(false); });
+handler.guard(new exceptions.Guard().protectAgainstBurst({ count: 10, seconds: 2, optionsFunc: function (o) { return o.stacktrace(false); } });
 });
 ```
 
-###### restrictBy
+###### protectAgainst
 Disable Exception options with a specified restriction function.  Note: see window.handler.retrieveReportedExceptionsCount and window.handler.reportedExceptions for a convient utilities.
 
 | Parameter | Type | Required | Description |
@@ -572,12 +575,11 @@ _return_
 | Guard | The guard |
 
 ```javascript
-handler.guard(function (g) {
-    return g.restrictBy(function (o, exception) {
-                if ( exception instanceof exceptions.SyntaxException) {
-                    o.stacktrace(false);
-                }
-                return o;
-           });
+handler.guard(new exceptions.Guard().protectAgainst(function (o, exception) {
+        if ( exception instanceof exceptions.SyntaxException) {
+            o.stacktrace(false);
+        }
+        return o;
+    });
 });
 ```
