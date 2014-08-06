@@ -283,26 +283,26 @@ _return_
 
 
 ```javascript
-var ArgumentException = createCustomException({ 
+var ArgumentException = exceptions.createCustomException({ 
     exception: function ArgumentException(message, config) {
         if (!(this instanceof ArgumentException)) {
             return new ArgumentException(message, config);
         }
-        Exception.call(this, message, config);
+        exceptions.Exception.call(this, message, config);
     },
-    baseException: Exception
+    baseException: exceptions.Exception
 });
 ```
 ```javascript
-var FooArgumentException = createCustomException({ 
+var FooArgumentException = exceptions.createCustomException({ 
     exception: function FooArgumentException(message, config) {
         if (!(this instanceof FooArgumentException)) {
             return new FooArgumentException(message, config);
         }
-        ArgumentException.call(this, message, config);
+        exceptions.ArgumentException.call(this, message, config);
     },
-    baseException: ArgumentException,
-    defaultOptions: new exceptions.Options().toggleAll(true).callback(false)
+    baseException: exceptions.ArgumentException,
+    defaultOptions: new exceptions.Options().toggleAll(true).reportCallback(false)
 });
 ```
 
