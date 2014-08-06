@@ -585,11 +585,12 @@ _return_
 | Guard | The guard |
 
 ```javascript
-handler.guard(new exceptions.Guard().protectAgainst(function (o, exception) {
-        if ( exception instanceof exceptions.SyntaxException) {
+exceptions.handler.guard(new exceptions.Guard()
+    .protectAgainstBurst({ count: 10, seconds: 2 })
+    .protectAgainst(function (o, exception) {
+        if (exception instanceof exceptions.SyntaxException) {
             o.stacktrace(false);
         }
         return o;
-    });
-});
+    }));
 ```
