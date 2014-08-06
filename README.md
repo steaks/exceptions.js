@@ -352,7 +352,16 @@ _return_
 
 ```javascript
 exceptions.handler.guard(new exceptions.Guard()
+    //Protect against a burst of exceptions where you're considering
+    //a "burst" 10 exceptions in the last two seconds.  This protection
+    //will ensure that we'll never report more than 10 exceptions in a
+    //2 second window.
     .protectAgainstBurst({ count: 10, seconds: 2 })
+    //Protect against any situation you desire with the protectAgainst
+    //funciton.  We happen to be protecting ourselves from generating
+    //a stacktrace for SyntaxExceptions.  Note, this is an arbitrary
+    //protection and not necessary.  It is only used to show you can
+    //protect against any situation and can turn on/off options individually.
     .protectAgainst(function (o, exception) {
         if (exception instanceof exceptions.SyntaxException) {
             o.stacktrace(false);
@@ -558,8 +567,12 @@ _return_
 | Guard | The guard |
 
 ```javascript
-exceptions.handler.guard(new exceptions.Guard().protectAgainstBurst({ count: 10, seconds: 2, optionsFunc: function (o) { return o.stacktrace(false); } });
-});
+exceptions.handler.guard(new exceptions.Guard()
+    .protectAgainstBurst({ 
+        count: 10, 
+        seconds: 2, 
+        optionsFunc: function (o) { return o.stacktrace(false); }
+    }));
 ```
 
 ###### protectAgainst
@@ -577,7 +590,16 @@ _return_
 
 ```javascript
 exceptions.handler.guard(new exceptions.Guard()
+    //Protect against a burst of exceptions where you're considering
+    //a "burst" 10 exceptions in the last two seconds.  This protection
+    //will ensure that we'll never report more than 10 exceptions in a
+    //2 second window.
     .protectAgainstBurst({ count: 10, seconds: 2 })
+    //Protect against any situation you desire with the protectAgainst
+    //funciton.  We happen to be protecting ourselves from generating
+    //a stacktrace for SyntaxExceptions.  Note, this is an arbitrary
+    //protection and not necessary.  It is only used to show you can
+    //protect against any situation and can turn on/off options individually.
     .protectAgainst(function (o, exception) {
         if (exception instanceof exceptions.SyntaxException) {
             o.stacktrace(false);
