@@ -90,7 +90,7 @@ _return_
 ```javascript
 var foo = new exceptions.Exception("Oh no!");
 var bar = new exceptions.Exception(new Error("Oh no!");
-var baz = new exceptions.Exception("Oh no!" { 
+var baz = new exceptions.Exception("Oh no!", { 
     name: "OverriddenExceptionName",
     innerException: foo,
     data { 
