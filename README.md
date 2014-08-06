@@ -12,7 +12,7 @@ Basic setup and usage
 exceptions.handler
     //Reporting to exceptionsjs platform is the easiest way to track your exceptions.
     //Register for free at https://www.exceptionsjs.com.
-    .reportToExceptionsJsPlatform("CLIENT_ID")
+    .reportToExceptionsJsPlatform({ clientId: "CLIENT_ID" })
     //Set a custom report post request that will be issued when an exception is reported.
     //if you want to bypass the exceptionsjs platform and handle the exception yourself.
     .reportPost({ url: "http://localhost/path/to/errorhandler/" });
@@ -45,7 +45,9 @@ exceptions.js adds the exceptions property to the window object which exposes:
 
 | Property | Description |
 | -------- | ----------- |
+| handler | Object responsible for handling errors thrown that hit window.onerror and specifying global configurations including the stacktrace.js url, html2canvas.js url, post url (to make a post request when an error is reported), post headers, callback (function executed when an error is reported). |
 | Guard | Guard to protect your page from slowing down or a large influx of error emails when your application encounters a burst of exceptions |
+| Options | Options for what should be turned on or off when reporting an individual exception. |
 | Exception | Base exception.  All other exceptions inherit from Exception. |
 | ArgumentException | An exception inherited from Exception that is useful for throwing or reporting exceptions related to function arguments |
 | InvalidOperationException | An exception inherited from Exception that is useful for throwing or reporting exceptions related to invalid operations |
@@ -57,7 +59,6 @@ exceptions.js adds the exceptions property to the window object which exposes:
 | TypeException | An exception inherited from Exception that is useful for throwing or reporting exceptions related to type errors |
 | URIException | An exception inherited from Exception that is useful for throwing or reporting exceptions related to URI errors |
 | createCustomException | Function you can use to create custom functions.  ArgumentException, InvalidOperationException, and NotImplementedException are all created with createCustomException |
-| handler | Object responsible for handling errors thrown that hit window.onerror and specifying global configurations including the stacktrace.js url, html2canvas.js url, post url (to make a post request when an error is reported), post headers, callback (function executed when an error is reported). |
 
 ### Exception
 
@@ -78,7 +79,7 @@ _config_
 | name | string | provide a name for the exception.  If no name is provided, we check if you manually set the name on the error created from this exception.  Otherwise, we fallback to the name of this exception's constructor.  Name is purely used for reporting purposes.  No functionality pivots off of name.  And the common case should be to not provide a name. |
 | innerException | Exception | Exceptions are recursive, so you can create an inner exception that is wrapped by the current exception. |
 | data | object | Provide any information you want to associate with this Exception.  You'll notice a screenshot property is added to the data object when the screenshot option is enabled for this Exception.  Also, a browser property is added to the data object. |
-| optionsFunc | function | Provide a function that takes in an Options object and returns that Options object with enabled or disabled options.  The received options object will be Options object returned from the defaultOptionsFunc for the exception.  In most cases, the defaultOptionsFunc returns an Options object with all options enabled. |
+| options | Options | Provide an Options object In most cases, the defaultOptions  will be sufficient and this property is not needed. |
 
 _return_
 
@@ -95,10 +96,7 @@ var baz = new exceptions.Exception("Oh no!" {
     data { 
         foo: "bar"
     },
-    optionsFunc: function (o) {
-        return o.stacktrace(false)
-            .screenshot(false);
-    }
+    options: new exceptions.Options().stacktrace(false).screenshot(false)
 });
 ```
 
@@ -274,7 +272,7 @@ _config_
 | -------- | ---- | ----------- |
 | exception | function | Constructor for the custom exception.  This constructor should call its base exception's constructor.  For debugging convenience, you'll probably want this function to have a name. |
 | baseException | Exception | Exception that the custom exception will inherit from |
-| defaultOptionsFunc | function | Provide a function that takes in an Options object and returns that Options object with enabled or disabled options.  You'll usually want to enable all options by default. |
+| defaultOptions | Options | Options that will be used by default for the exception if no others are specified.  You'll usually want to enable all options by default. |
 
 
 _return_
@@ -304,7 +302,7 @@ var FooArgumentException = createCustomException({
         ArgumentException.call(this, message, config);
     },
     baseException: ArgumentException,
-    defaultOptionsFunc: function (o) { return o.toggleAll(true).callback(false); }
+    defaultOptions: new exceptions.Options().toggleAll(true).callback(false)
 });
 ```
 
@@ -434,6 +432,10 @@ _return_
 Enable posting to exceptionsjs platform.  The exceptionsjs platform handles your Javascript error by parsing the serialized exception and constructing a useful exception email that includes stacktraces, screenshots, and extra information.  Register for exceptionsjs platform at https://exceptionsjs.com.  This option only works if you've enabled the option to allow unsecure reporting.  If you have enabled secure reporting you must send your exceptions to excpetionsjs platform using the full oauth2 process.  See https://exceptionsjs.com for useful libraries in many languages that make submitting exceptions with the full oauth2 process easy.
 
 | Parameter | Type | Required | Description |
+| --------- | ---- | --------- | ----------- |
+| config | object | no | configuration object to specify how you want to report to the exceptionsjs platform |
+
+| Property | Type | Required | Description |
 | --------- | ---- | -------- | ----------- |
 | clientId | string | no | clientId that will be used with exceptionsjs platform |
 | to | string | no | email address that will receive the exception |
@@ -442,7 +444,7 @@ _return_
 
 | Type | Description |
 | ---- | ----------- |
-| handler|string | Handler if clientId is defined.  ClientId if clientId is not defined. |
+| handler|object | Handler if config is defined.  Object for configuration of how you're reporting to exceptions.js platform if undefined |
 
 ###### loadStacktraceJs
 Asynchronously load stacktrace.js
@@ -465,7 +467,7 @@ Helper function to get the count of reported exceptions (see handler.reportedExc
 | seconds | int | no | Last number of seconds for which we care to count exceptions.  If not specified, we'll use the total number of exceptions reported since the exception handler was setup.|
 
 ##Options
-Options for an exception.  Options include retrieving a stacktrace, printing a screenshot, posting a serialized JSON representation of an exception to a specified url when the exception is reported, and/or excecuting a callback that recieves the exception when the exception is reported.  exceptions.js does not expose a way to create an Options object.  Instead, it passes an Options object to a few functions which are expected to manipulate and return the object.  Functions that receive an Options object are optionsFunc, defaultOptionsFunc, and restrictFunc.
+Options for an exception.  Options include retrieving a stacktrace, printing a screenshot, posting a serialized JSON representation of an exception to a specified url when the exception is reported, and/or excecuting a callback that recieves the exception when the exception is reported.
 
 ##### methods
 
@@ -495,12 +497,12 @@ _return_
 | ---- | ----------- |
 | Options|bool | Options object if enable is defined, value of the screenshot option if enable is not defined. |
 
-###### post
+###### reportPost
 Get or set the retrieve post option.
 
 | Parameter | Type | Required | Description |
 | --------- | ---- | -------- | ----------- |
-| enable | bool | no | Return the current option if undefined.  Enable the post option if enable is true.  Disable the post option if enable is false. |
+| enable | bool | no | Return the current option if undefined.  Enable reporting to an arbitrary url via a post request option if enable is true.  Disable the option if enable is false. |
 
 _return_
 
@@ -508,12 +510,19 @@ _return_
 | ---- | ----------- |
 | Options|bool | Options object if enable is defined, value of the post option if enable is not defined. |
 
-###### callback
+###### reportCallback
 Get or set the retrieve callback option.
 
 | Parameter | Type | Required | Description |
 | --------- | ---- | -------- | ----------- |
 | enable | bool | no | Return the current option if undefined.  Enable the callback option if enable is true.  Disable the callback option if enable is false. |
+
+###### reportToExceptionsJsPlatform
+Get or set the retrieve report to exceptionsjs platform option.
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| enable | bool | no | Return the current option if undefined.  Enable the post to reportToExceptionsJsPlatform if enable is true.  Disable the reportToExceptionsJsPlatform option if enable is false. |
 
 _return_
 
