@@ -1,6 +1,6 @@
 exceptions.js
 ======================
-Exceptions.js provides error reporting with stacktraces, screenshots, DOM dumps, browser information, etc.  The library can be used as a standalone open source project or can be used with the exceptionsjs platform (https://www.exceptionsjs.com) which translates reported exceptions into emails and delivers them to registered developers.  See demos here: https://www.exceptionsjs.com/demo.
+Exceptions.js is the library that makes Javascript Errors useful.  Include stacktraces, screenshots, DOM dumps, browser information, etc. when users hit Javascript errors.  The library can be used as a standalone open source project or can be used with the exceptionsjs platform (https://www.exceptionsjs.com) which translates reported exceptions into emails and delivers them to registered developers.  See demos here: https://www.exceptionsjs.com/demo.
 
 Basic setup and usage
 ----------------------
@@ -19,24 +19,30 @@ exceptions.handler
 ```
 		
 ```javascript
-//The exceptions.handler will handle this thrown error when window.onerror is executed.  However, 
-//you may find it more useful to throw an Exception rather than any arbirary object :)
+//exceptions.js will handle any error.
+var foo = {}, oops = foo.uhoh.doesNotExist;
 throw new Error("Something went wrong!");
 throw "Something went wrong!";
 
-//Report an exception.
-var exception = new exceptions.Exception("Something went wrong!");
-exception.report();
+//you can also report exceptions.
+new exceptions.Exception("Something went wrong!").report();
 
-//Throw an exception.  The exceptions.handler will handle this thrown error when window.onerror is executed.
+//or throw an exception.
 throw new exceptions.Exception("Something went wrong!");
 
-//Include extra data with the exception.
-throw new exceptions.Exception("Something went wrong!", {
-    data: {
-        foo: "bar"
-    }
-});
+//exceptions.js provides convienence methods that make code more readable.
+function myFunc(requiredArg) {
+    exceptions.throwIf(!requiredArg, "The requiredArg argument was not provided!!!"); 
+}
+
+//and types that make errors more explicit
+function WillWriteInTheFuture() {
+    throw exceptions.NotImplementedException();
+}
+
+//and other useful features including support for inner exceptions, 
+//ability to include extra data with your exceptions, abilities protect
+//against bursts or repeated exceptions
 ```
 
 API
