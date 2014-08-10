@@ -65,6 +65,8 @@ exceptions.js adds the exceptions property to the window object which exposes:
 | TypeException | An exception inherited from Exception that is useful for throwing or reporting exceptions related to type errors |
 | URIException | An exception inherited from Exception that is useful for throwing or reporting exceptions related to URI errors |
 | createCustomException | Function you can use to create custom functions.  ArgumentException, InvalidOperationException, and NotImplementedException are all created with createCustomException |
+| throwIf | Shorthand method to invoke Exception.throwIf.  Use this function to conditionally throw exceptions. |
+| reportIf | Shorthand method to invoke Exception.reportIf.  Use this function to conditionally throw exceptions.  |
 
 ### Exception
 
@@ -212,7 +214,7 @@ _return_
 
 ###### report
 
-Report the exception (without throwing it).  Reporting an exception involves making a post request with a serialized exception object if the post option is enabled and/or executing a callback if the callback option is enabled.  The post request uses the url returned from exception.handler.reportUrl() and headers returned from exception.handler.postHeaders().  It will not make a post request if no url is specified.  The callback will execute the function returned from exceptions.handlers.callback and will not execute the callback if no function is specified.
+Report the exception (without throwing it).  Reporting an exception involves making a post request with a serialized exception object if the post request option is enabled, posting to the exception.js platform, and/or executing a custom report function if the report callback option is enabled.
 
 
 ###### toSerializableObject
@@ -473,7 +475,7 @@ Helper function to get the count of reported exceptions (see handler.reportedExc
 | seconds | int | no | Last number of seconds for which we care to count exceptions.  If not specified, we'll use the total number of exceptions reported since the exception handler was setup.|
 
 ##Options
-Options for an exception.  Options include retrieving a stacktrace, printing a screenshot, posting a serialized JSON representation of an exception to a specified url when the exception is reported, and/or excecuting a callback that recieves the exception when the exception is reported.
+Options for an exception.  Options include retrieving a stacktrace, printing a screenshot, posting a serialized JSON representation of an exception to a specified url when the exception is reported, posting a request to the exceptionsjs platform, and/or excecuting a reportCallback that receives the exception when the exception is reported.
 
 ##### methods
 
@@ -517,14 +519,14 @@ _return_
 | Options|bool | Options object if enable is defined, value of the post option if enable is not defined. |
 
 ###### reportCallback
-Get or set the retrieve callback option.
+Get or set the report callback option.
 
 | Parameter | Type | Required | Description |
 | --------- | ---- | -------- | ----------- |
 | enable | bool | no | Return the current option if undefined.  Enable the callback option if enable is true.  Disable the callback option if enable is false. |
 
 ###### reportToExceptionsJsPlatform
-Get or set the retrieve report to exceptionsjs platform option.
+Get or set the report to exceptionsjs platform option.
 
 | Parameter | Type | Required | Description |
 | --------- | ---- | -------- | ----------- |
@@ -535,6 +537,20 @@ _return_
 | Type | Description |
 | ---- | ----------- |
 | Options|bool | Options object if enable is defined, value of the callback option if enable is not defined. |
+
+###### DOMDump
+Get or set the DOM dump option.
+
+| Parameter | Type | Required | Description |
+| --------- | ---- | -------- | ----------- |
+| enable | bool | no | Return the current option if undefined.  Enable the DOM dump option if enable is true.  Disable the DOM dump option if enable is false. |
+
+_return_
+
+| Type | Description |
+| ---- | ----------- |
+| Options|bool | ptions object if enable is defined, value of the DOM dump option if enable is not defined. |
+
 
 ###### toggleAll
 Toggle all options according to the enable parameter
