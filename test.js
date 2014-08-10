@@ -138,6 +138,23 @@ module.exports = {
         test.equals(window.exceptionReported, undefined);
         test.done();
     },
+    testShortcutReportIfTrueWithOutMessage: function (test) {
+        window.exceptions.reportIf(true);
+        test.equals(window.exceptionReported.callbackExecuted, true);
+        test.equals(window.exceptionReported.message(), "Condition evaluated to truthy");
+        test.done();
+    },
+    testShortcutReportIfTrueWithMessage: function (test) {
+        window.exceptions.reportIf(true, "foo");
+        test.equals(window.exceptionReported.callbackExecuted, true);
+        test.equals(window.exceptionReported.message(), "foo");
+        test.done();
+    },
+    testShortcutReportIfFalse: function (test) {
+        window.exceptions.reportIf(false);
+        test.equals(window.exceptionReported, undefined);
+        test.done();
+    },
     //serialization
     testToSerializableObject: function (test) {
         var data = { foo: "bar" }

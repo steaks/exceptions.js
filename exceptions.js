@@ -149,7 +149,7 @@
          * @param {bool} Return the current option if undefined.  Enable the post option
          *        if enable is true.  Disable the report post option if enable is false.
          * @return {Options|bool} Options object if enable is defined, value of the report 
-         * 		   post option if enable is not defined.
+         *         post option if enable is not defined.
          */
         reportPost: function (enable) {
             if (enable !== undefined) {
@@ -163,7 +163,7 @@
          * @param {bool} Return the current option if undefined.  Enable the report callback option
          *        if enable is true.  Disable the report callback option if enable is false.
          * @return {Options|bool} Options object if enable is defined, value of the report
-         * 		   callback option if enable is not defined.
+         *         callback option if enable is not defined.
          */
         reportCallback: function (enable) {
             if (enable !== undefined) {
@@ -175,10 +175,10 @@
         /**
          * Get or set the post to exceptions.js platform option
          * @param {bool} Return the current option if undefined.  Enable the report to exceptions.js
-         * 		  platform option if enable is true.  Disable the report to exceptions.js platform option 
-         * 		  if enable is false.
+         *        platform option if enable is true.  Disable the report to exceptions.js platform option 
+         *        if enable is false.
          * @return {Options|bool} Options object if enable is defined, value of the report to exceptions.js
-         * 		   platform option if enable is not defined.
+         *         platform option if enable is not defined.
          */
         reportToExceptionsJsPlatform: function (enable) {
             if (enable !== undefined) {
@@ -192,7 +192,7 @@
          * @param {bool} Return the current option if undefined.  Enable the DOM dump option
          *        if enable is true.  Disable the DOM dump option if enable is false.
          * @return {Options|bool} Options object if enable is defined, value of the DOM dump
-         * 		   option if enable is not defined.
+         *         option if enable is not defined.
          */        
         DOMDump: function (enable) {
             if (enable !== undefined) {
@@ -913,8 +913,8 @@
         
         /**
          * Get or set a guard that will be used to restrict Exception options.
-         * @param {Gurard} guard that protects against bursts of exceptions, repeated exceptions,
-         * 		  or any other exceptions that should not be reported.
+         * @param {Guard} guard that protects against bursts of exceptions, repeated exceptions,
+         *        or any other exceptions that should not be reported.
          * @return The handler if guard is defined.  Handler's guard if guard is not defined.
          */
         guard: function (guard) {
@@ -1088,8 +1088,8 @@
         /**
          * Handle any error by turning it into an exception and reporting it.
          * @param {Object} config object for information that will be used to
-         * 		  create an exception and report it.  Properties are: errorMsg, 
-         * 		  url, lineNumber, columnNumber, and error.
+         *        create an exception and report it.  Properties are: errorMsg, 
+         *        url, lineNumber, columnNumber, and error.
          */
         handle: function (config) {
             var errorMsg = config.errorMessage, 
@@ -1240,7 +1240,9 @@
         SyntaxException: SyntaxException,
         TypeException: TypeException,
         URIException: URIException,
-        createCustomException: createCustomException
+        createCustomException: createCustomException,
+        throwIf: Exception.throwIf,
+        reportIf: Exception.reportIf
     };
     
     window.exceptions = exceptions;
