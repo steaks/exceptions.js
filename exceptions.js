@@ -99,8 +99,8 @@
     /**
      * Options for an exception.  Options include retrieving a stacktrace, printing a screenshot,
      * posting a serialized JSON representation of an exception to a specified url when the
-     * exception is reported, and/or excecuting a reportCallback that recieves the exception when
-     * the exception is reported.
+     * exception is reported, posting a request to the exceptionsjs platform, and/or excecuting 
+     * a reportCallback that receives the exception when the exception is reported.
      * @constructor
      */
     function Options(config) {
@@ -120,7 +120,7 @@
          * Get or set the retrieve stacktrace option.
          * @param {bool} Return the current option if undefined.  Enable the stacktrace option
          *        if enable is true.  Disable the stacktrace option if enable is false.
-         * @return Options object if enable is defined, value of the stacktrace option if 
+         * @return {Options|bool} Options object if enable is defined, value of the stacktrace option if 
          *         enable is not defined.
          */
         stacktrace: function (enable) {
@@ -134,7 +134,7 @@
          * Get or set the take screenshot option.
          * @param {bool} Return the current option if undefined.  Enable the screenshot option
          *        if enable is true.  Disable the screenshot option if enable is false.
-         * @return Options object if enable is defined, value of the screenshot option if 
+         * @return {Options|bool} Options object if enable is defined, value of the screenshot option if 
          *         enable is not defined.
          */
         screenshot: function (enable) {
@@ -145,11 +145,11 @@
             return this._screenshot;
         },
         /**
-         * Get or set the retrieve stacktrace option.
+         * Get or set the retrieve report post option.
          * @param {bool} Return the current option if undefined.  Enable the post option
-         *        if enable is true.  Disable the post option if enable is false.
-         * @return Options object if enable is defined, value of the post option if 
-         *         enable is not defined.
+         *        if enable is true.  Disable the report post option if enable is false.
+         * @return {Options|bool} Options object if enable is defined, value of the report 
+         * 		   post option if enable is not defined.
          */
         reportPost: function (enable) {
             if (enable !== undefined) {
@@ -159,11 +159,11 @@
             return this._reportPost;
         },
         /**
-         * Get or set the execute handler reportCallback option.
-         * @param {bool} Return the current option if undefined.  Enable the reportCallback option
-         *        if enable is true.  Disable the reportCallback option if enable is false.
-         * @return Options object if enable is defined, value of the reportCallback option if 
-         *         enable is not defined.
+         * Get or set the execute handler report callback option.
+         * @param {bool} Return the current option if undefined.  Enable the report callback option
+         *        if enable is true.  Disable the report callback option if enable is false.
+         * @return {Options|bool} Options object if enable is defined, value of the report
+         * 		   callback option if enable is not defined.
          */
         reportCallback: function (enable) {
             if (enable !== undefined) {
@@ -173,11 +173,12 @@
             return this._reportCallback;
         },
         /**
-         * Post to exceptions.js platform
-         * @param {bool} Return the current option if undefined.  Enable the reportToExceptionsJsPlatform option
-         *        if enable is true.  Disable the reportToExceptionsJsPlatform option if enable is false.
-         * @return Options object if enable is defined, value of the reportToExceptionsJsPlatform option if 
-         *         enable is not defined.
+         * Get or set the post to exceptions.js platform option
+         * @param {bool} Return the current option if undefined.  Enable the report to exceptions.js
+         * 		  platform option if enable is true.  Disable the report to exceptions.js platform option 
+         * 		  if enable is false.
+         * @return {Options|bool} Options object if enable is defined, value of the report to exceptions.js
+         * 		   platform option if enable is not defined.
          */
         reportToExceptionsJsPlatform: function (enable) {
             if (enable !== undefined) {
@@ -186,7 +187,13 @@
             }
             return this._reportToExceptionsJsPlatform;
         },
-        
+        /**
+         * Get or set the DOM dump option.
+         * @param {bool} Return the current option if undefined.  Enable the DOM dump option
+         *        if enable is true.  Disable the DOM dump option if enable is false.
+         * @return {Options|bool} Options object if enable is defined, value of the DOM dump
+         * 		   option if enable is not defined.
+         */        
         DOMDump: function (enable) {
             if (enable !== undefined) {
                 this._DOMDump = Boolean(enable);
@@ -213,11 +220,11 @@
      * Create a custom exception class with the createCustomException function
      * @param {object} config object for creating an exception
      *        exception - {function} Constructor for the custom exception.  This constructor should 
-     *                      call its base exception's constructor.  For debugging convenience, 
-     *                      you'll probably want this function to have a name.
+     *                    call its base exception's constructor.  For debugging convenience, 
+     *                    you'll probably want this function to have a name.
      *        baseException - {Exception} Exception that the custom exception will inherit from
      *        defaultOptions - {Options} Options that will be used by default for the exception 
-     *                           if no others are specified.  You'll usually want to enable all options by default. 
+     *                         if no others are specified.  You'll usually want to enable all options by default. 
      * @return Custom exception.  The type will be the function you provided in the config.exception property.
      */
     function createCustomException(config) {
@@ -433,15 +440,9 @@
         },
         /**
          * Report the exception (without throwing it).  Reporting an exception involves
-         * making a post request with a serialized exception object if the post option is
-         * enabled and/or executing a custom report function if the reportCallback option is enabled.  The post
-         * request uses the url returned from exception.handler.postUrl() and headers returned
-         * from exception.handler.postHeaders().  It will not make a post request if no url
-         * is specified.  The custom report function will execute the function returned from 
-         * exceptions.handlers.reportCallback and will not execute the reportCallback if no function is 
-         * specified.
-         *
-         *
+         * making a post request with a serialized exception object if the post request option is
+         * enabled, posting to the exception.js platform, and/or executing a custom report function if 
+         * the report callback option is enabled.
          */
         report: function () {
             try {
@@ -497,6 +498,10 @@
             return JSON.stringify(simpleObject);
         },
         
+        /**
+         * Return a string representation of the exception.
+         * @return {String} exception represented as a string
+         */
         toString: function () {
             if (this.message()) {
                 return this.name() + " - " + this.message();
