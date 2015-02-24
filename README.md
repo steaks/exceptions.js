@@ -7,9 +7,7 @@ Basic setup and usage
 ```javascript
 <script type="text/javascript" src="path/to/exceptions.js"></script>
 
-//Setup the exceptions handler to report errors when 
-//you invoke Exception.report() or window.onerror executes
-exceptions.handler
+ex.handler
     //Reporting to exceptionsjs platform is the easiest way to track your exceptions.
     //Register for free at https://www.exceptionsjs.com.
     .reportToExceptionsJsPlatform({ clientId: "CLIENT_ID" })
@@ -17,7 +15,7 @@ exceptions.handler
     //if you want to bypass the exceptionsjs platform and handle the exception yourself.
     .reportPost({ url: "http://localhost/path/to/errorhandler/" });
 ```
-		
+
 ```javascript
 //exceptions.js will handle any error.
 var foo = {}, oops = foo.uhoh.doesNotExist;
@@ -25,22 +23,22 @@ throw new Error("Something went wrong!");
 throw "Something went wrong!";
 
 //you can also report exceptions.
-new exceptions.Exception("Something went wrong!").report();
+new ex.Exception("Something went wrong!").report();
 
 //or throw an exception.
-throw new exceptions.Exception("Something went wrong!");
+throw new ex.Exception("Something went wrong!");
 
 //exceptions.js provides convienence methods that make code more readable.
 function myFunc(requiredArg) {
-    exceptions.throwIf(!requiredArg, "The requiredArg argument was not provided!!!"); 
+    ex.throwIf(!requiredArg, "The requiredArg argument was not provided!!!");
 }
 
 //and types that make errors more explicit
 function WillWriteInTheFuture() {
-    throw exceptions.NotImplementedException();
+    throw ex.NotImplementedException();
 }
 
-//and other useful features including support for inner exceptions, 
+//and other useful features including support for inner exceptions,
 //ability to include extra data with your exceptions, abilities protect
 //against bursts or repeated exceptions
 ```
@@ -96,15 +94,15 @@ _return_
 | Exception | The created exception |
 
 ```javascript
-var foo = new exceptions.Exception("Oh no!");
-var bar = new exceptions.Exception(new Error("Oh no!");
-var baz = new exceptions.Exception("Oh no!", { 
+var foo = new ex.Exception("Oh no!");
+var bar = new ex.Exception(new Error("Oh no!");
+var baz = new ex.Exception("Oh no!", {
     name: "OverriddenExceptionName",
     innerException: foo,
-    data: { 
+    data: {
         foo: "bar"
     },
-    options: new exceptions.Options().stacktrace(false).screenshot(false)
+    options: new ex.Options().stacktrace(false).screenshot(false)
 });
 ```
 
@@ -121,7 +119,7 @@ _parameters_
 
 
 ```javascript
-exceptions.Exception.throwIf(1 === 1, "Error message");
+ex.Exception.throwIf(1 === 1, "Error message");
 ```
 
 ###### reportIf
@@ -137,7 +135,7 @@ _parameters_
 
 
 ```javascript
-exceptions.Exception.reportIf(1 === 1, "Error message");
+ex.Exception.reportIf(1 === 1, "Error message");
 ```
 
 ##### methods
@@ -291,26 +289,26 @@ _return_
 
 
 ```javascript
-var ArgumentException = exceptions.createCustomException({ 
+var ArgumentException = ex.createCustomException({
     exception: function ArgumentException(message, config) {
         if (!(this instanceof ArgumentException)) {
             return new ArgumentException(message, config);
         }
-        exceptions.Exception.call(this, message, config);
+        ex.Exception.call(this, message, config);
     },
-    baseException: exceptions.Exception
+    baseException: ex.Exception
 });
 ```
 ```javascript
-var FooArgumentException = exceptions.createCustomException({ 
+var FooArgumentException = ex.createCustomException({
     exception: function FooArgumentException(message, config) {
         if (!(this instanceof FooArgumentException)) {
             return new FooArgumentException(message, config);
         }
-        exceptions.ArgumentException.call(this, message, config);
+        ex.ArgumentException.call(this, message, config);
     },
-    baseException: exceptions.ArgumentException,
-    defaultOptions: new exceptions.Options().toggleAll(true).reportCallback(false)
+    baseException: ex.ArgumentException,
+    defaultOptions: new ex.Options().toggleAll(true).reportCallback(false)
 });
 ```
 
@@ -359,7 +357,7 @@ _return_
 
 
 ```javascript
-exceptions.handler.guard(new exceptions.Guard()
+ex.handler.guard(new ex.Guard()
     //Protect against a burst of exceptions where you're considering
     //a "burst" 10 exceptions in the last two seconds.  This protection
     //will ensure that we'll never report more than 10 exceptions in a
@@ -371,7 +369,7 @@ exceptions.handler.guard(new exceptions.Guard()
     //protection and not necessary.  It is only used to show you can
     //protect against any situation and can turn on/off options individually.
     .protectAgainst(function (o, exception) {
-        if (exception instanceof exceptions.SyntaxException) {
+        if (exception instanceof ex.SyntaxException) {
             o.stacktrace(false);
         }
         return o;
@@ -578,7 +576,7 @@ Disable Exception options if the exception reported count threshold has been exc
 | Property | Type | Required | Description |
 | -------- | ---- | -------- | ----------- |
 | count | int | yes | Threshold that must not be exceed lest you'll disable Exception options. |
-| seconds | int | no | Last number of seconds for which we care to count exceptions.  If not specified, we'll use the total number of exceptions reported since the exception handler was setup. |
+| seconds | int | no | Last number of seconds for which we care to count ex.  If not specified, we'll use the total number of exceptions reported since the exception handler was setup. |
 | optionsFunc | function | no | function that enables/disables and returns the options if the exception threshold has been exceeded.  If not specified, we'll disable all options for the Exception.  You'll likely only want to disable options in this function. |
 
 
@@ -589,10 +587,10 @@ _return_
 | Guard | The guard |
 
 ```javascript
-exceptions.handler.guard(new exceptions.Guard()
-    .protectAgainstBurst({ 
-        count: 10, 
-        seconds: 2, 
+exceptions.handler.guard(new ex.Guard()
+    .protectAgainstBurst({
+        count: 10,
+        seconds: 2,
         optionsFunc: function (o) { return o.stacktrace(false); }
     }));
 ```
@@ -611,7 +609,7 @@ _return_
 | Guard | The guard |
 
 ```javascript
-exceptions.handler.guard(new exceptions.Guard()
+ex.handler.guard(new ex.Guard()
     //Protect against a burst of exceptions where you're considering
     //a "burst" 10 exceptions in the last two seconds.  This protection
     //will ensure that we'll never report more than 10 exceptions in a
@@ -623,7 +621,7 @@ exceptions.handler.guard(new exceptions.Guard()
     //protection and not necessary.  It is only used to show you can
     //protect against any situation and can turn on/off options individually.
     .protectAgainst(function (o, exception) {
-        if (exception instanceof exceptions.SyntaxException) {
+        if (exception instanceof ex.SyntaxException) {
             o.stacktrace(false);
         }
         return o;

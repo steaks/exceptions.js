@@ -1246,4 +1246,5 @@
     };
     
     window.exceptions = exceptions;
+    window.ex = exceptions;
 }());
