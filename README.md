@@ -564,7 +564,7 @@ _return_
 | Options | Options object |
 
 ##Guard
-Performing exception operations can be expensive or superfluous sometimes.  For example, you may not want to take a screenshot of your page if you've hit 10 errors in a row because it could cause noticable performance errors. Specify a guard with exceptions.handler.guard() to disable exception options you do not wish to perform. The guard restricts options for all reported exceptions.
+Performing exception operations can be expensive or superfluous sometimes.  For example, you may not want to take a screenshot of your page if you've hit 10 errors in a row because it could cause noticable performance errors. Specify a guard with ex.handler.guard() to disable exception options you do not wish to perform. The guard restricts options for all reported exceptions.
 
 ###### protectAgainstBurst
 Disable Exception options if the exception reported count threshold has been exceeded.  See handler.reportedExceptions for more information about how we defined a reported exception.
@@ -587,7 +587,7 @@ _return_
 | Guard | The guard |
 
 ```javascript
-exceptions.handler.guard(new ex.Guard()
+ex.handler.guard(new ex.Guard()
     .protectAgainstBurst({
         count: 10,
         seconds: 2,
